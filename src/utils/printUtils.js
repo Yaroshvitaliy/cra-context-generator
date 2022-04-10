@@ -1,19 +1,20 @@
 'use strict';
 
-const { createOkResult, createErrorResult, isOkResult, getResultData } = require("../result");
+const { getResultData } = require("../result");
 
 const print = console.log;
-
 const printError = console.error;
-
+const printWarn = console.warn;
 const printEmptyLine = () => print('');
-
 const printHorizontalLine = () => print('==========================================');
 
-const printHeader = (src, dest) => {
+const printHeader = (sourceCodeGeneratorInfo) => {
+    const { name, version, time } = sourceCodeGeneratorInfo;
     printEmptyLine();
     printHorizontalLine();
-    print('CRA-CONTEXT-GENERATOR');
+    print(`${name.toUpperCase()}@${version}`);
+    printEmptyLine();
+    print(time);
     printEmptyLine();
 };
 
@@ -26,24 +27,40 @@ const printArgs = (result) =>
         resolve(result);
 });
 
-const printReadFileProgress = (src) => {
+const printReadSrcFile = (result) => {
+    const { src } = getResultData(result);
     printEmptyLine();
-    print('read file:');
+    print('source:');
     print(`- ${src}`);
+    return result;
 };
 
-const printSourceCodeProgress = (file) => {
-    const { name } = file;
+const printCreatedSourceCodes = (result) => {
+    const { files } = getResultData(result);
     printEmptyLine();
-    print('generated source:');
-    print(`- ${name}`);
+
+    if (files.length > 0) {
+        print('generated source code:');
+        files.forEach(({name}) => print(`- ${name}`));
+    } else {
+        printWarn('generated source code: none');
+    }
+
+    return result;
 };
 
-const printSaveFileProgress = (file) => {
-    const { path } = file;
+const printSavedFiles = (result) => {
+    const { files } = getResultData(result);
     printEmptyLine();
-    print('saved file:');
-    print(`- ${path}`);
+
+    if (files.length > 0) {
+        print('saved files:');
+        files.forEach(({path}) => print(`- ${path}`));
+    } else {
+        printWarn('saved file: none');
+    }
+
+    return result;
 };
 
 const printFooter = (result) => 
@@ -59,17 +76,18 @@ const printErrors = (errorResult) => {
     if (errors.length > 0) {
         printEmptyLine();
         printError('errors:');
-        errors.forEach(error => console.error(`- ${error}`));
+        errors.forEach(error => printError(`- ${error}`));
         printHorizontalLine();
     }
+    return errorResult;
 };
 
 module.exports = {
     printHeader,
     printArgs,
-    printReadFileProgress,
-    printSourceCodeProgress,
-    printSaveFileProgress,
+    printReadSrcFile,
+    printCreatedSourceCodes,
+    printSavedFiles,
     printFooter,
     printErrors
 };

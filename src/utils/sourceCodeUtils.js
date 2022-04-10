@@ -11,7 +11,7 @@ const createHeaderLines = (typeDef, sourceCodeGeneratorInfo) => {
     lines.push(`// ${name}`);
     lines.push('');
     return lines;
-}
+};
 
 const createContextContent = (typeDef, sourceCodeGeneratorInfo) => {
     const { name, props } = typeDef;
@@ -33,14 +33,14 @@ const createContextBuilderContent = (typeDef, sourceCodeGeneratorInfo) => {
     lines = lines.concat(headerLines);
 
     //todo: implement
-    
+
     const content = lines.join('\r\n');
 
     return content;
 };
 
 
-const createSourceCodes = (result, sourceCodeGeneratorInfo, printProgress) => 
+const createSourceCodes = (result, sourceCodeGeneratorInfo) => 
     new Promise((resolve, reject) => { 
         try {
             const { srcData } = getResultData(result);
@@ -60,12 +60,10 @@ const createSourceCodes = (result, sourceCodeGeneratorInfo, printProgress) =>
                     const contextContent = createContextContent(t, sourceCodeGeneratorInfo);
                     const contextFile = { name: `${name}Context.ts`, path: contextPath, content: contextContent };
                     files.push(contextFile);
-                    printProgress(contextFile);
 
                     const contextBuilderContent = createContextBuilderContent(t, sourceCodeGeneratorInfo);
                     const contextBuilderFile = { name: `${name}ContextBuilder.ts`, path: contextBuilderPath, content: contextBuilderContent };
                     files.push(contextBuilderFile);
-                    printProgress(contextBuilderFile);
                 });
             resolve(createOkResult({ files }));
         } catch (err) {

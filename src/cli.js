@@ -7,29 +7,27 @@ const { mapOkResult } = require('./result');
 const { validateArgs, validateSrc } = require('./utils/validationUtils');
 const { readSrcFile, saveDestFiles } = require('./utils/fileUtils');
 const { createSourceCodes } = require('./utils/sourceCodeUtils');
-const { printHeader, printArgs, printReadFileProgress, printSourceCodeProgress, printSaveFileProgress, printFooter, printErrors } = require('./utils/printUtils');
+const { 
+    printHeader, printArgs, printReadSrcFile, printCreatedSourceCodes, printSavedFiles, printFooter, printErrors 
+} = require('./utils/printUtils');
 
-const readSrcFileWithProgress = (argsResult) => readSrcFile(argsResult, printReadFileProgress);
 const time = getCurrentTime();
 const sourceCodeGeneratorInfo = { name, version, time };
-const createSourceCodesWithProgress = (srcResult) => createSourceCodes(srcResult, sourceCodeGeneratorInfo, printSourceCodeProgress);
-const saveDestFilesWithProgress = (result) => saveDestFiles(result, printSaveFileProgress);
+const createSourceCodesByResult = (result) => createSourceCodes(result, sourceCodeGeneratorInfo);
 
 const [,, src, dest, ...args] = process.argv;
 
-printHeader(src, dest);
-
-// todo: print progresses for all items 
+printHeader(sourceCodeGeneratorInfo);
 
 validateArgs(src, dest)
     .then(printArgs)
-    .then(readSrcFileWithProgress)
+    .then(readSrcFile)
+    .then(printReadSrcFile)
     .then(validateSrc)
-    .then(createSourceCodesWithProgress)
-    .then(sourceCodesResult => 
-        mapOkResult(
-            sourceCodesResult, 
-            (sourceCodesData) => ({...sourceCodesData, dest})))
-    .then(saveDestFilesWithProgress)
+    .then(createSourceCodesByResult)
+    .then(printCreatedSourceCodes)
+    .then(result => mapOkResult(result, (data) => ({...data, dest})))
+    .then(saveDestFiles)
+    .then(printSavedFiles)
     .then(printFooter)
     .catch(printErrors);

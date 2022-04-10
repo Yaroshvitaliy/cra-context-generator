@@ -35,9 +35,9 @@ const validateSrc = (result) =>
         if (isValid) {
             resolve(result);
         } else {
-            reject({ errors: ['source is not valid'] });
+            reject(createErrorResult({ errors: ['source is not valid'] }));
         }
-    });
+});
 
 module.exports = {
     validateArgs,
