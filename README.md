@@ -6,6 +6,7 @@ Execute the following command to generate the source code:
 where:
 - src: the file name of .json file that contains state props description (see examples).
 - dest: the destination path of generated source code.
+
 Please note, the generator will not create folders, they must exist.
 
 # Link `cra-generate-contexts` command for development
