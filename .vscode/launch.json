@@ -12,7 +12,7 @@
                 "<node_internals>/**"
             ],
             "program": "${workspaceFolder}\\src\\cli.js",
-            "args": ["./examples/task.json", "./../project-name/src"],
+            "args": ["./examples/widget-builder-contexts.json", "./examples/widget-builder-contexts"],
         }
     ]
 }

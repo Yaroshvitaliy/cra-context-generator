@@ -19,4 +19,4 @@ Execute the following command to unlink `cra-generate-contexts` command:
 
 # Examples
 Execute the following command to generate the source code:  
-`cra-generate-contexts ./examples/task.json ./../project-name/src`
+`cra-generate-contexts ./examples/widget-builder-contexts.json ./examples/widget-builder-contexts`

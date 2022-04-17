@@ -1,6 +1,6 @@
 'use strict';
 
-const { createOkResult, createErrorResult, getResultData } = require("../result");
+const { createOkResult, createErrorResult, getResultData } = require('../result');
 
 const isNotEmptyString = (str) => {
     if (typeof str !== 'string' || str.length === 0) {
@@ -28,12 +28,14 @@ const validateArgs = (src, dest) =>
 const validateSrc = (result) =>
     new Promise((resolve, reject) => {
         const { srcData } = getResultData(result);
+        const ignoreFilter = (type) => !type.ignore;
 
         //todo: implement validator
-        const isValid = srcData && srcData.types && srcData.types.length && srcData.sourceCode && srcData.sourceCode.context && srcData.sourceCode.contextBuilder;
+        const isValid = srcData && srcData.types && srcData.types.length && srcData.types.filter(ignoreFilter).length;
 
         if (isValid) {
-            resolve(result);
+            const types = srcData.types.filter(ignoreFilter);
+            resolve(createOkResult({ srcData: { ...srcData, types } }));
         } else {
             reject(createErrorResult({ errors: ['source is not valid'] }));
         }

@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const { createOkResult, createErrorResult, getResultData } = require("../result");
+const { createOkResult, createErrorResult, getResultData } = require('../result');
 
 const readSrcFile = (result) => 
     new Promise((resolve, reject) => {      
@@ -25,8 +25,8 @@ const readSrcFile = (result) =>
 
 const saveDestFile = (file, dest) =>
     new Promise((resolve, reject) => {
-        const { name: fileName, path: filePath, content } = file;
-        const destPath = path.join(dest, filePath, fileName);
+        const { name: fileName, content } = file;
+        const destPath = path.join(dest, fileName);
         fs.writeFile(destPath, content, (err) => {
             if (err) {
                 reject(`An error has occurred while writing a file: ${err}`);

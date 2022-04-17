@@ -19,20 +19,12 @@
             ]
         },
         {
-            "ignore": false,
+            "ignore": true,
             "description": "The switch button state properties.",
             "name": "SwitchButton",
             "props": [
                 { "name": "enabled", "type": "boolean", "isOptional": true, "defaultValue": false }
             ]
         }
-    ],
-    "sourceCode": {
-        "context": {
-            "path": "contexts"
-        },
-        "contextBuilder": {
-            "path": "api"
-        }
-    }
+    ]
 }

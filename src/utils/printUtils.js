@@ -1,6 +1,6 @@
 'use strict';
 
-const { getResultData } = require("../result");
+const { getResultData } = require('../result');
 
 const print = console.log;
 const printError = console.error;
