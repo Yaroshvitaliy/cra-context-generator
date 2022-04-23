@@ -28,13 +28,13 @@ const validateArgs = (src, dest) =>
 const validateSrc = (result) =>
     new Promise((resolve, reject) => {
         const { srcData } = getResultData(result);
-        const ignoreFilter = (type) => !type.ignore;
+        const enableFilter = (type) => !type.disable;
 
         //todo: implement validator
-        const isValid = srcData && srcData.types && srcData.types.length && srcData.types.filter(ignoreFilter).length;
+        const isValid = srcData && srcData.types && srcData.types.length && srcData.types.filter(enableFilter).length;
 
         if (isValid) {
-            const types = srcData.types.filter(ignoreFilter);
+            const types = srcData.types.filter(enableFilter);
             resolve(createOkResult({ srcData: { ...srcData, types } }));
         } else {
             reject(createErrorResult({ errors: ['source is not valid'] }));

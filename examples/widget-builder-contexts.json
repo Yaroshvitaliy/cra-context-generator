@@ -2,7 +2,8 @@
     "description": "Source code generation of React's state, context, context provider and context builder for the given types.",
     "types": [
         {
-            "ignore": false,
+            "disable": false,
+            "disableContextBuilder": false,
             "description": "The application state properties.",
             "name": "App",
             "props": [
@@ -11,7 +12,8 @@
             ]
         },
         {
-            "ignore": false,
+            "disable": false,
+            "disableContextBuilder": true,
             "description": "The widget state properties. A Widget can be put into the given HTML document placeholder. This is a wrapper for any component.",
             "name": "Widget",
             "props": [
@@ -19,7 +21,8 @@
             ]
         },
         {
-            "ignore": true,
+            "disable": true,
+            "disableContextBuilder": false,
             "description": "The switch button state properties.",
             "name": "SwitchButton",
             "props": [
