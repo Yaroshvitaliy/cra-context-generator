@@ -1,16 +1,34 @@
 'use strict';
 
+const path = require('path');
 const { createOkResult, createErrorResult, getResultData } = require('../result');
 const { toPascalCase, toCamelCase } = require('./stringUtils');
 
 const emptyLine = '';
 const newLine = '\r\n';
 
-const createCodeDocumentation = (description) => {
+const createTypeDocumentation = (description) => {
     const lines = [];
     lines.push('/**');
     lines.push(` * ${description}`);
     lines.push(' */');
+    return lines;
+};
+
+const createPropDocumentation = (indetation, description, params) => {
+    const lines = [];
+    lines.push(`${indetation}/**`);
+    lines.push(`${indetation} * ${description}`);
+
+    if (params && params.length && params.length > 0) {
+        lines.push(`${indetation} *`);
+        params.forEach(param => {
+            const { type, name, description } = param;
+            lines.push(`${indetation} * {${type}} ${name} ${description}`);
+        });
+    }
+
+    lines.push(`${indetation} */`);
     return lines;
 };
 
@@ -46,7 +64,7 @@ const createStatePropsInterfaceName = (name) => `I${toPascalCase(name)}StateProp
 
 const createStatePropsInterface = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createCodeDocumentation(`The ${toPascalCase(name)} state props interface.`);
+    const lines = createTypeDocumentation(`The ${toPascalCase(name)} state props interface.`);
     const interfaceName = createStatePropsInterfaceName(name);
     lines.push(`export interface ${interfaceName} {`);
     props.forEach(p => {
@@ -61,7 +79,7 @@ const createStateInterfaceName = (name) => `I${toPascalCase(name)}State`;
 
 const createStateInterface = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createCodeDocumentation(`The ${toPascalCase(name)} state interface.`);
+    const lines = createTypeDocumentation(`The ${toPascalCase(name)} state interface.`);
     const interfaceName = createStateInterfaceName(name);
     lines.push(`export interface ${interfaceName} {`);
     props.forEach(p => {
@@ -77,7 +95,7 @@ const createContextProviderPropsInterfaceName = (name) => `I${toPascalCase(name)
 
 const createContextProviderPropsInterface = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createCodeDocumentation(`The ${toPascalCase(name)} context provider props interface.`);
+    const lines = createTypeDocumentation(`The ${toPascalCase(name)} context provider props interface.`);
     const interfaceName = createContextProviderPropsInterfaceName(name);
     lines.push(`export interface ${interfaceName} {`);
     lines.push(`${indentation1}${createProp('children', 'React.ReactNode')};`);
@@ -94,7 +112,7 @@ const createContextValueInterfaceName = (name) => `I${toPascalCase(name)}Context
 
 const createContextValueInterface = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createCodeDocumentation(`The ${toPascalCase(name)} context value interface.`);
+    const lines = createTypeDocumentation(`The ${toPascalCase(name)} context value interface.`);
     const interfaceName = createContextValueInterfaceName(name);
     lines.push(`export interface ${interfaceName} {`);
     props.forEach(p => {
@@ -129,7 +147,7 @@ const createDefaultStateName = (name) => `Default${toPascalCase(name)}State`;
 
 const createDefaultState = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createCodeDocumentation(`The default ${toPascalCase(name)} state.`);
+    const lines = createTypeDocumentation(`The default ${toPascalCase(name)} state.`);
     const interfaceName = createStateInterfaceName(name);
     const typeName = createDefaultStateName(name);
     lines.push(`export const ${typeName}: ${interfaceName} = {`);
@@ -146,7 +164,7 @@ const createDefaultContextValueName = (name) => `Default${toPascalCase(name)}Con
 
 const createDefaultContextValue = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createCodeDocumentation(`The default ${toPascalCase(name)} context value.`);
+    const lines = createTypeDocumentation(`The default ${toPascalCase(name)} context value.`);
     const interfaceName = createContextValueInterfaceName(name);
     const typeName = createDefaultContextValueName(name);
     lines.push(`export const ${typeName}: ${interfaceName} = {`);
@@ -163,7 +181,7 @@ const createStateName = (name) => `${toPascalCase(name)}State`;
 
 const createState = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createCodeDocumentation(`The ${toPascalCase(name)} state.`);
+    const lines = createTypeDocumentation(`The ${toPascalCase(name)} state.`);
     const interfaceName = createStatePropsInterfaceName(name);
     const typeName = createStateName(name);
     lines.push(`export const ${typeName} = ({`);
@@ -195,7 +213,7 @@ const createState = ({ typeDef }) => {
 
 const createContext = ({ typeDef }) => {
     const { name } = typeDef;
-    const lines = createCodeDocumentation(`The ${toPascalCase(name)} context.`);
+    const lines = createTypeDocumentation(`The ${toPascalCase(name)} context.`);
     const interfaceName = createContextValueInterfaceName(name);
     const typeName = createContextName(name);
     const defaultValueName = createDefaultContextValueName(name);
@@ -207,7 +225,7 @@ const createContextProviderName = (name) => `${toPascalCase(name)}ContextProvide
 
 const createContextProvider = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createCodeDocumentation(`The ${toPascalCase(name)} context provider.`);
+    const lines = createTypeDocumentation(`The ${toPascalCase(name)} context provider.`);
     const typeName = createContextProviderName(name);
     lines.push(`export const ${typeName} = ({`);
     lines.push(`${indentation3}children,`);
@@ -272,23 +290,101 @@ const createContextFileContent = (typeDef, sourceCodeGeneratorInfo) => {
     return content;
 };
 
+const createContextFileName = (name) => `${toCamelCase(name)}Context.ts`;
+
+const contextBuilderUtilsContent = `
+import React from 'react';
+import { createHashHistory } from 'history';
+
+const createKey = () => Math.random().toString(36).substr(2, 5);
+
+const createChild = (type: () => JSX.Element) => React.createElement(type);
+
+const createChildWithKey = (type: () => JSX.Element) => React.createElement(type, { key: createKey() });
+
+export const createChildren = (content: (() => JSX.Element) | (Array<() => JSX.Element>)) => {
+    let children: React.ReactNode;
+    
+    if (Array.isArray(content)) {
+        children = (content as Array<() => JSX.Element>).map(createChildWithKey)
+    } else {
+        children = createChild(content as () => JSX.Element);
+    }
+
+    return children;
+};
+
+const history = createHashHistory();
+
+export const getHistory = () => history;
+
+export const deserializePathname = (pathname: string) => {
+    const normalizedPathname = (pathname ? (pathname[0] === '/' ? pathname.substr(1) : pathname) : '');
+    const deserializedPathname = normalizedPathname.length
+        ? normalizedPathname
+            .split('&')
+            .reduce((acc, kv) => {
+                const [key, value] = kv.split('=');
+                acc[key] = value;
+                return acc;
+            }, {} as any)
+        : {};
+    return deserializedPathname;
+};
+
+export const serializePathname = (pathname: any) =>
+    Object.keys(pathname)
+        .map(key => ` + '`' + '${key}=${pathname[key]}' + '`' + `)
+        .sort()
+        .join('&');
+`;
+
+const contextBuilderUtilFile = { name: 'contextBuilderUtils.ts', content: contextBuilderUtilsContent };
+
 const createContextBuilderHeader = ({ sourceCodeGeneratorInfo, typeDef }) => {
     const { name } = typeDef;
+
+    const contextImports = [
+        createContextProviderName,
+        createStateInterfaceName,
+        createStateName,
+        createDefaultStateName
+    ]
+    .map(x => x(name))
+    .join(', ');
+
+    const contextFileName = path.parse(createContextFileName(name)).name;
+    const contextBuilderUtilsFileName = path.parse(contextBuilderUtilFile.name).name;
+
     const imports = [
         `import React from 'react';`,
         `import ReactDOM from 'react-dom';`,
         `import { Router, Route, useHistory } from 'react-router-dom';`,
         `import { History, Location } from 'history';`,
-        `import { AppContextProvider, IAppState, AppState, DefaultAppState } from './${createContextFileName(name)}';`,
-        `import { getHistory, deserializePathname, serializePathName, createChildren } from './contextBuilderUtils.ts';`
+        `import { ${contextImports} } from './${contextFileName}';`,
+        `import { createChildren, getHistory, deserializePathname, serializePathname } from './${contextBuilderUtilsFileName}';`
     ];
     const header = createHeader(sourceCodeGeneratorInfo, imports);
     return header;
 };
 
+const createContextInterfaceName = (name) => `I${toPascalCase(name)}Context`;
+
+const createContextInterface = ({ typeDef }) => {
+    const { name, props } = typeDef;
+    const lines = createTypeDocumentation(`The ${toPascalCase(name)} context interface.`);
+    const interfaceName = createContextInterfaceName(name);
+    lines.push(`export interface ${interfaceName} {`);
+    createPropDocumentation(indentation1, 'The component to be rendered.').forEach(line => lines.push(line));
+    lines.push(`${indentation1}Component: () => JSX.Element;`);
+    lines.push('};');
+    return lines;
+};
+
 const createContextBuilderFileContent = (typeDef, sourceCodeGeneratorInfo) => {
     const lines = [
         createContextBuilderHeader,
+        createContextInterface
     ]
     .map(x => x({ sourceCodeGeneratorInfo, typeDef }))
     .reduce((acc, currentValue) => 
@@ -297,8 +393,6 @@ const createContextBuilderFileContent = (typeDef, sourceCodeGeneratorInfo) => {
     const content = lines.join(newLine);
     return content;
 };
-
-const createContextFileName = (name) => `${toCamelCase(name)}Context.ts`;
 
 const createContextFiles = (result, sourceCodeGeneratorInfo) => {
     const { srcData } = getResultData(result);
@@ -333,17 +427,12 @@ const createContextBuilderFiles = (result, sourceCodeGeneratorInfo) => {
     return files;
 };
 
-const createContextBuilderUtilFiles = () => {
-    const file = { name: 'contextBuilderUtils.ts', content: '' };
-    return [file];
-};
-
 const createSourceCodes = (result, sourceCodeGeneratorInfo) => 
     new Promise((resolve, reject) => { 
         try {
             const contextFiles = createContextFiles(result, sourceCodeGeneratorInfo);
             const contextBuilderFiles = createContextBuilderFiles(result, sourceCodeGeneratorInfo);
-            const utilsFiles = contextBuilderFiles.length > 0 ? createContextBuilderUtilFiles() : [];
+            const utilsFiles = contextBuilderFiles.length > 0 ? [contextBuilderUtilFile] : [];
             const files = contextFiles.concat(contextBuilderFiles).concat(utilsFiles);
             resolve(createOkResult({ files }));
         } catch (err) {
