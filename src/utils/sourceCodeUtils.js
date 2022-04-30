@@ -10,7 +10,11 @@ const newLine = '\r\n';
 const createTypeDocumentation = (description) => {
     const lines = [];
     lines.push('/**');
-    lines.push(` * ${description}`);
+    if (Array.isArray(description)) {
+        description.forEach(line => lines.push(` * ${line}`));
+    } else {
+        lines.push(` * ${description}`);
+    }
     lines.push(' */');
     return lines;
 };
@@ -24,7 +28,7 @@ const createPropDocumentation = (indetation, description, params) => {
         lines.push(`${indetation} *`);
         params.forEach(param => {
             const { type, name, description } = param;
-            lines.push(`${indetation} * {${type}} ${name} ${description}`);
+            lines.push(`${indetation} * @param {${type}} ${name} ${description}`);
         });
     }
 
@@ -34,9 +38,11 @@ const createPropDocumentation = (indetation, description, params) => {
 
 const createPropName = (name) => toCamelCase(name);
 const createSetPropName = (name) => `set${toPascalCase(name)}`;    
+const createGetPropName = (name) => `get${toPascalCase(name)}`;    
 const createStatePropName = (name) => `${toCamelCase(name)}State`;    
 const createSetStatePropName = (name) => `set${toPascalCase(name)}State`;    
 const createSetEventHandlerPropName = (name) => `${toCamelCase(name)}SetEventHandler`;   
+const createUrlParamPropName = (name) => `${toCamelCase(name)}UrlParam`;   
 
 const createProp = (name, typeOrValue, isOptional, canBeUndefined) => 
     `${name}${isOptional ? '?' : ''}: ${canBeUndefined ? `undefined | ${typeOrValue}` : typeOrValue }`;
@@ -44,6 +50,7 @@ const createProp = (name, typeOrValue, isOptional, canBeUndefined) =>
 const indentation1 = '    ';
 const indentation2 = indentation1 + indentation1;
 const indentation3 = indentation1 + indentation1 + indentation1;
+const indentation4 = indentation1 + indentation1 + indentation1 + indentation1;
 
 const createHeader = (sourceCodeGeneratorInfo, imports) => {
     const { name: generatorName, version: generatorVersion, time } = sourceCodeGeneratorInfo;
@@ -375,8 +382,133 @@ const createContextInterface = ({ typeDef }) => {
     const lines = createTypeDocumentation(`The ${toPascalCase(name)} context interface.`);
     const interfaceName = createContextInterfaceName(name);
     lines.push(`export interface ${interfaceName} {`);
-    createPropDocumentation(indentation1, 'The component to be rendered.').forEach(line => lines.push(line));
-    lines.push(`${indentation1}Component: () => JSX.Element;`);
+    createPropDocumentation(indentation1, 'The component to be rendered.')
+        .forEach(line => lines.push(line));
+    lines.push(`${indentation1}${createProp('Component', '() => JSX.Element')};`);
+    lines.push(emptyLine);
+    createPropDocumentation(indentation1, 'Renderes the component.', [
+        { type: 'Element | DocumentFragment | null', name: 'container', description: 'The container. Optional parameter.' }
+    ])
+        .forEach(line => lines.push(line));
+    lines.push(`${indentation1}${createProp('render', '(container: Element | DocumentFragment | null) => void')};`);
+    props.forEach(p => {
+        const { name, type } = p;
+        lines.push(emptyLine);
+        createPropDocumentation(indentation1, `Gets the ${createPropName(name)}.`)
+            .forEach(line => lines.push(line));
+        lines.push(`${indentation1}${createProp(createGetPropName(name), `() => ${type}`)};`);
+        lines.push(emptyLine);
+        createPropDocumentation(indentation1, `Sets the ${createPropName(name)}.`)
+            .forEach(line => lines.push(line));
+        lines.push(`${indentation1}${createProp(createSetPropName(name), `(${createPropName(name)}: ${type}) => void;`)}`);
+    });
+    lines.push('};');
+    return lines;
+};
+
+const componentPropsInterfaceName = 'IComponentProps ';
+
+const createComponentPropsInterface = ({ typeDef }) => {
+    const { name, props } = typeDef;
+    const lines = [];
+    lines.push(`export interface ${componentPropsInterfaceName} {`);
+    lines.push(`${indentation1}${createProp('children', 'React.ReactNode')};`);
+    lines.push(`${indentation1}${createProp(createStatePropName(name), createStateInterfaceName(name))};`);
+    props.forEach(p => {
+        const { name, type, isOptional } = p;
+        lines.push(`${indentation1}${createProp(createPropName(name), `${type}`, isOptional)};`);
+        lines.push(`${indentation1}${createProp(createUrlParamPropName(name), 'string', isOptional)};`);
+        lines.push(`${indentation1}${createProp(createSetEventHandlerPropName(name), `(${name}: ${type}) => void`, isOptional)};`);
+    });
+    lines.push('};');
+    return lines;
+};
+
+const createContextBuilderName = (name) => `${toPascalCase(name)}ContextBuilder`;
+
+const createContextBuilderPropsVariable = ({ typeDef }) => {
+    const { name, props } = typeDef;
+    const lines = [];
+    lines.push(`${indentation1}private props: ${componentPropsInterfaceName} = {`);
+    lines.push(`${indentation2}${createProp('children', 'undefined')},`);
+    lines.push(`${indentation2}${createProp(createStatePropName(name), createDefaultStateName(name))},`);
+    props.forEach(p => {
+        const { name } = p;
+        lines.push(`${indentation2}${createProp(createPropName(name), 'undefined')},`);
+        lines.push(`${indentation2}${createProp(createUrlParamPropName(name), 'undefined')},`);
+        lines.push(`${indentation2}${createProp(createSetEventHandlerPropName(name), 'undefined')},`);
+    });
+    lines.push(`${indentation1}};`);
+    return lines;
+};
+
+const createContextBuilderBuild = ({ typeDef }) => {
+    const { name, props } = typeDef;
+    const lines = [];
+    lines.push(`${indentation1}build() {`);
+    lines.push(`${indentation1}};`);
+    return lines;
+};
+
+const createContextBuilderComponent = () => {
+    const lines = [];
+    lines.push(`${indentation1}const Component = () => (`);
+    lines.push(`${indentation2}<Router history={getHistory()}>`);
+    lines.push(`${indentation3}<Route>`);
+    lines.push(`${indentation4}<RouteComponent />`);
+    lines.push(`${indentation3}</Route>`);
+    lines.push(`${indentation2}</Router>`);
+    lines.push(`${indentation1});`);
+    return lines;
+};
+
+const createContextBuilderRender = () => {
+    const lines = [];
+    lines.push(`${indentation1}const render = (container: Element | DocumentFragment | null) =>`);
+    lines.push(`${indentation2}ReactDOM.render(`);
+    lines.push(`${indentation3}<React.StrictMode>`);
+    lines.push(`${indentation4}<Component />`);
+    lines.push(`${indentation3}</React.StrictMode>,`);
+    lines.push(`${indentation3}container || document.createElement('div')`);
+    lines.push(`${indentation2});`);
+    return lines;
+};
+
+const createContextBuilderGetter = ({ typeDef }) => {
+    const { name, props } = typeDef;
+    const lines = [];
+    return lines;
+};
+
+const createContextBuilderSetter = ({ typeDef }) => {
+    const { name, props } = typeDef;
+    const lines = [];
+    return lines;
+};
+
+const createContextBuilder = ({ typeDef }) => {
+    const { name } = typeDef;
+    const lines = createTypeDocumentation([
+        `The ${toPascalCase(name)} context builder.`,
+        `Helps to build the ${toPascalCase(name)} context and manage its state.`
+    ]);
+    const className = createContextBuilderName(name);
+    lines.push(`export class ${className} {`);
+
+    const parts = [
+        createContextBuilderPropsVariable({ typeDef }),
+        createContextBuilderBuild({ typeDef }),
+        createContextBuilderComponent(),
+        createContextBuilderRender()
+    ];
+
+    parts.reduce((acc, currentValue, i) => {
+        i > 0 && (acc = acc.concat([emptyLine]));
+        acc = acc.concat(currentValue);
+        return acc;
+    }, [])
+    .forEach(line => lines.push(line));
+
     lines.push('};');
     return lines;
 };
@@ -384,7 +516,9 @@ const createContextInterface = ({ typeDef }) => {
 const createContextBuilderFileContent = (typeDef, sourceCodeGeneratorInfo) => {
     const lines = [
         createContextBuilderHeader,
-        createContextInterface
+        createContextInterface,
+        createComponentPropsInterface,
+        createContextBuilder
     ]
     .map(x => x({ sourceCodeGeneratorInfo, typeDef }))
     .reduce((acc, currentValue) => 
