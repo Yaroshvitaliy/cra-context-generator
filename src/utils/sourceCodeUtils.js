@@ -2,27 +2,30 @@
 
 const path = require('path');
 const { createOkResult, createErrorResult, getResultData } = require('../result');
-const { toPascalCase, toCamelCase } = require('./stringUtils');
+const { toPascalCase, toCamelCase, toWords } = require('./stringUtils');
 
 const emptyLine = '';
 const newLine = '\r\n';
 
-const createTypeDocumentation = (description) => {
-    const lines = [];
-    lines.push('/**');
-    if (Array.isArray(description)) {
-        description.forEach(line => lines.push(` * ${line}`));
-    } else {
-        lines.push(` * ${description}`);
+const createIndentation = (level) => {
+    let indentation = '';
+    const indentation1 = '    ';
+    for (let i = 0; i < level; i++) {
+        indentation += indentation1;
     }
-    lines.push(' */');
-    return lines;
+    return indentation;
 };
 
-const createPropDocumentation = (indetation, description, params) => {
+const createJSDocDescription = (indetation, data) => {
+    const { description, params, returns } = data;
     const lines = [];
     lines.push(`${indetation}/**`);
-    lines.push(`${indetation} * ${description}`);
+
+    if (Array.isArray(description)) {
+        description.forEach(line => lines.push(`${indetation} * ${line}`));
+    } else {
+        lines.push(`${indetation} * ${description}`);
+    }
 
     if (params && params.length && params.length > 0) {
         lines.push(`${indetation} *`);
@@ -30,6 +33,12 @@ const createPropDocumentation = (indetation, description, params) => {
             const { type, name, description } = param;
             lines.push(`${indetation} * @param {${type}} ${name} ${description}`);
         });
+    }
+
+    if (returns) {
+        const { type: returnType, description: returnDescription } = returns;
+        lines.push(`${indetation} *`);
+        lines.push(`${indetation} * @returns {${returnType}} ${returnDescription}`);
     }
 
     lines.push(`${indetation} */`);
@@ -43,14 +52,10 @@ const createStatePropName = (name) => `${toCamelCase(name)}State`;
 const createSetStatePropName = (name) => `set${toPascalCase(name)}State`;    
 const createSetEventHandlerPropName = (name) => `${toCamelCase(name)}SetEventHandler`;   
 const createUrlParamPropName = (name) => `${toCamelCase(name)}UrlParam`;   
+const createWithPropName = (name) => `with${toPascalCase(name)}`;   
 
 const createProp = (name, typeOrValue, isOptional, canBeUndefined) => 
     `${name}${isOptional ? '?' : ''}: ${canBeUndefined ? `undefined | ${typeOrValue}` : typeOrValue }`;
-
-const indentation1 = '    ';
-const indentation2 = indentation1 + indentation1;
-const indentation3 = indentation1 + indentation1 + indentation1;
-const indentation4 = indentation1 + indentation1 + indentation1 + indentation1;
 
 const createHeader = (sourceCodeGeneratorInfo, imports) => {
     const { name: generatorName, version: generatorVersion, time } = sourceCodeGeneratorInfo;
@@ -71,12 +76,12 @@ const createStatePropsInterfaceName = (name) => `I${toPascalCase(name)}StateProp
 
 const createStatePropsInterface = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createTypeDocumentation(`The ${toPascalCase(name)} state props interface.`);
+    const lines = createJSDocDescription(createIndentation(0), { description: `The ${toPascalCase(name)} state props interface.` });
     const interfaceName = createStatePropsInterfaceName(name);
     lines.push(`export interface ${interfaceName} {`);
     props.forEach(p => {
         const { name, type, isOptional } = p;
-        lines.push(`${indentation1}${createProp(createPropName(name), type, isOptional)};`);
+        lines.push(`${createIndentation(1)}${createProp(createPropName(name), type, isOptional)};`);
     });
     lines.push('};');
     return lines;
@@ -86,13 +91,13 @@ const createStateInterfaceName = (name) => `I${toPascalCase(name)}State`;
 
 const createStateInterface = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createTypeDocumentation(`The ${toPascalCase(name)} state interface.`);
+    const lines = createJSDocDescription(createIndentation(0), { description: `The ${toPascalCase(name)} state interface.` });
     const interfaceName = createStateInterfaceName(name);
     lines.push(`export interface ${interfaceName} {`);
     props.forEach(p => {
         const { name, type, isOptional } = p;
-        lines.push(`${indentation1}${createProp(createStatePropName(name), type)};`);
-        lines.push(`${indentation1}${createProp(createSetStatePropName(name), `React.Dispatch<React.SetStateAction<${type}>>`, false, isOptional)};`);
+        lines.push(`${createIndentation(1)}${createProp(createStatePropName(name), type)};`);
+        lines.push(`${createIndentation(1)}${createProp(createSetStatePropName(name), `React.Dispatch<React.SetStateAction<${type}>>`, false, isOptional)};`);
     });
     lines.push('};');
     return lines;
@@ -102,14 +107,14 @@ const createContextProviderPropsInterfaceName = (name) => `I${toPascalCase(name)
 
 const createContextProviderPropsInterface = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createTypeDocumentation(`The ${toPascalCase(name)} context provider props interface.`);
+    const lines = createJSDocDescription(createIndentation(0), { description: `The ${toPascalCase(name)} context provider props interface.` });
     const interfaceName = createContextProviderPropsInterfaceName(name);
     lines.push(`export interface ${interfaceName} {`);
-    lines.push(`${indentation1}${createProp('children', 'React.ReactNode')};`);
-    lines.push(`${indentation1}${createProp(createStatePropName(name), createStateInterfaceName(name))};`);
+    lines.push(`${createIndentation(1)}${createProp('children', 'React.ReactNode')};`);
+    lines.push(`${createIndentation(1)}${createProp(createStatePropName(name), createStateInterfaceName(name))};`);
     props.forEach(p => {
         const { name, type, isOptional } = p;
-        lines.push(`${indentation1}${createProp(createSetEventHandlerPropName(name), `(${name}: ${type}) => void`, isOptional)};`);
+        lines.push(`${createIndentation(1)}${createProp(createSetEventHandlerPropName(name), `(${name}: ${type}) => void`, isOptional)};`);
     });
     lines.push('};');
     return lines;
@@ -119,13 +124,13 @@ const createContextValueInterfaceName = (name) => `I${toPascalCase(name)}Context
 
 const createContextValueInterface = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createTypeDocumentation(`The ${toPascalCase(name)} context value interface.`);
+    const lines = createJSDocDescription(createIndentation(0), { description: `The ${toPascalCase(name)} context value interface.` });
     const interfaceName = createContextValueInterfaceName(name);
     lines.push(`export interface ${interfaceName} {`);
     props.forEach(p => {
         const { name, type } = p;
-        lines.push(`${indentation1}${createProp(createPropName(name), type)};`);
-        lines.push(`${indentation1}${createProp(createSetPropName(name), `(${name}: ${type}) => void;`)}`);
+        lines.push(`${createIndentation(1)}${createProp(createPropName(name), type)};`);
+        lines.push(`${createIndentation(1)}${createProp(createSetPropName(name), `(${name}: ${type}) => void;`)}`);
     });
     lines.push('};');
     return lines;
@@ -154,14 +159,14 @@ const createDefaultStateName = (name) => `Default${toPascalCase(name)}State`;
 
 const createDefaultState = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createTypeDocumentation(`The default ${toPascalCase(name)} state.`);
+    const lines = createJSDocDescription(createIndentation(0), { description: `The default ${toPascalCase(name)} state.` });
     const interfaceName = createStateInterfaceName(name);
     const typeName = createDefaultStateName(name);
     lines.push(`export const ${typeName}: ${interfaceName} = {`);
     props.forEach(p => {
         const { name } = p;
-        lines.push(`${indentation1}${createProp(createStatePropName(name), createDefaultValueName(name))},`);
-        lines.push(`${indentation1}${createProp(createSetStatePropName(name), 'undefined')},`);
+        lines.push(`${createIndentation(1)}${createProp(createStatePropName(name), createDefaultValueName(name))},`);
+        lines.push(`${createIndentation(1)}${createProp(createSetStatePropName(name), 'undefined')},`);
     });
     lines.push('};');
     return lines;
@@ -171,14 +176,14 @@ const createDefaultContextValueName = (name) => `Default${toPascalCase(name)}Con
 
 const createDefaultContextValue = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createTypeDocumentation(`The default ${toPascalCase(name)} context value.`);
+    const lines = createJSDocDescription(createIndentation(0), { description: `The default ${toPascalCase(name)} context value.` });
     const interfaceName = createContextValueInterfaceName(name);
     const typeName = createDefaultContextValueName(name);
     lines.push(`export const ${typeName}: ${interfaceName} = {`);
     props.forEach(p => {
         const { name, type } = p;
-        lines.push(`${indentation1}${createProp(createPropName(name), createDefaultValueName(name))},`);
-        lines.push(`${indentation1}${createProp(createSetPropName(name), `(${name}: ${type}) => {},`)}`);
+        lines.push(`${createIndentation(1)}${createProp(createPropName(name), createDefaultValueName(name))},`);
+        lines.push(`${createIndentation(1)}${createProp(createSetPropName(name), `(${name}: ${type}) => {},`)}`);
     });
     lines.push('};');
     return lines;
@@ -188,30 +193,30 @@ const createStateName = (name) => `${toPascalCase(name)}State`;
 
 const createState = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createTypeDocumentation(`The ${toPascalCase(name)} state.`);
+    const lines = createJSDocDescription(createIndentation(0), { description: `The ${toPascalCase(name)} state.` });
     const interfaceName = createStatePropsInterfaceName(name);
     const typeName = createStateName(name);
     lines.push(`export const ${typeName} = ({`);
     props.forEach(p => {
         const { name } = p;
-        lines.push(`${indentation3}${createPropName(name)},`);
+        lines.push(`${createIndentation(3)}${createPropName(name)},`);
     });
-    lines.push(`${indentation2}}: ${interfaceName}) => {`);
+    lines.push(`${createIndentation(2)}}: ${interfaceName}) => {`);
     lines.push(emptyLine);
     props.forEach(p => {
         const { name, type } = p;
-        lines.push(`${indentation1}const [ ${createStatePropName(name)}, ${createSetStatePropName(name)} ] = React.useState<${type}>(${createPropName(name)} || ${createDefaultValueName(name)});`);
+        lines.push(`${createIndentation(1)}const [ ${createStatePropName(name)}, ${createSetStatePropName(name)} ] = React.useState<${type}>(${createPropName(name)} || ${createDefaultValueName(name)});`);
     });
     lines.push(emptyLine);
-    lines.push(`${indentation1}const ${createStatePropName(name)} = {`);
+    lines.push(`${createIndentation(1)}const ${createStatePropName(name)} = {`);
     props.forEach(p => {
         const { name } = p;
-        lines.push(`${indentation2}${createStatePropName(name)},`);
-        lines.push(`${indentation2}${createSetStatePropName(name)},`);
+        lines.push(`${createIndentation(2)}${createStatePropName(name)},`);
+        lines.push(`${createIndentation(2)}${createSetStatePropName(name)},`);
     });
-    lines.push(`${indentation1}};`);
+    lines.push(`${createIndentation(1)}};`);
     lines.push(emptyLine);
-    lines.push(`${indentation1}return ${createStatePropName(name)}`);
+    lines.push(`${createIndentation(1)}return ${createStatePropName(name)}`);
     lines.push('};');
     return lines;
 };
@@ -220,7 +225,7 @@ const createState = ({ typeDef }) => {
 
 const createContext = ({ typeDef }) => {
     const { name } = typeDef;
-    const lines = createTypeDocumentation(`The ${toPascalCase(name)} context.`);
+    const lines = createJSDocDescription(createIndentation(0), { description: `The ${toPascalCase(name)} context.` });
     const interfaceName = createContextValueInterfaceName(name);
     const typeName = createContextName(name);
     const defaultValueName = createDefaultContextValueName(name);
@@ -232,45 +237,45 @@ const createContextProviderName = (name) => `${toPascalCase(name)}ContextProvide
 
 const createContextProvider = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createTypeDocumentation(`The ${toPascalCase(name)} context provider.`);
+    const lines = createJSDocDescription(createIndentation(0), { description: `The ${toPascalCase(name)} context provider.` });
     const typeName = createContextProviderName(name);
     lines.push(`export const ${typeName} = ({`);
-    lines.push(`${indentation3}children,`);
-    lines.push(`${indentation3}${createStatePropName(name)},`);
+    lines.push(`${createIndentation(3)}children,`);
+    lines.push(`${createIndentation(3)}${createStatePropName(name)},`);
     props.forEach(p => {
         const { name } = p;
-        lines.push(`${indentation3}${createSetEventHandlerPropName(name)},`);
+        lines.push(`${createIndentation(3)}${createSetEventHandlerPropName(name)},`);
     });
-    lines.push(`${indentation2}}: ${createContextProviderPropsInterfaceName(name)}) => {`);
+    lines.push(`${createIndentation(2)}}: ${createContextProviderPropsInterfaceName(name)}) => {`);
     lines.push(emptyLine);
-    lines.push(`${indentation1}const {`);
+    lines.push(`${createIndentation(1)}const {`);
     props.forEach(p => {
         const { name } = p;
-        lines.push(`${indentation2}${createStatePropName(name)},`);
-        lines.push(`${indentation2}${createSetStatePropName(name)},`);
+        lines.push(`${createIndentation(2)}${createStatePropName(name)},`);
+        lines.push(`${createIndentation(2)}${createSetStatePropName(name)},`);
     });
-    lines.push(`${indentation1}} = ${createStatePropName(name)} || {};`);
+    lines.push(`${createIndentation(1)}} = ${createStatePropName(name)} || {};`);
     lines.push(emptyLine);
     props.forEach(p => {
         const { name } = p;
-        lines.push(`${indentation1}React.useEffect(() => {`);
-        lines.push(`${indentation2}${createSetEventHandlerPropName(name)} && ${createSetEventHandlerPropName(name)}(${createStatePropName(name)});`);
-        lines.push(`${indentation1}}, [ ${createStatePropName(name)}, ${createSetStatePropName(name)}, ${createSetEventHandlerPropName(name)} ]);`);
+        lines.push(`${createIndentation(1)}React.useEffect(() => {`);
+        lines.push(`${createIndentation(2)}${createSetEventHandlerPropName(name)} && ${createSetEventHandlerPropName(name)}(${createStatePropName(name)});`);
+        lines.push(`${createIndentation(1)}}, [ ${createStatePropName(name)}, ${createSetStatePropName(name)}, ${createSetEventHandlerPropName(name)} ]);`);
         lines.push(emptyLine);
     });
-    lines.push(`${indentation1}const contextValue: ${createContextValueInterfaceName(name)} = {`);
+    lines.push(`${createIndentation(1)}const contextValue: ${createContextValueInterfaceName(name)} = {`);
     props.forEach(p => {
         const { name, type } = p;
-        lines.push(`${indentation2}${createProp(createPropName(name), createStatePropName(name))},`);
-        lines.push(`${indentation2}${createProp(createSetPropName(name), `(${name}: ${type}) => ${createSetStatePropName(name)} && ${createSetStatePropName(name)}(${createPropName(name)}),`)}`);
+        lines.push(`${createIndentation(2)}${createProp(createPropName(name), createStatePropName(name))},`);
+        lines.push(`${createIndentation(2)}${createProp(createSetPropName(name), `(${name}: ${type}) => ${createSetStatePropName(name)} && ${createSetStatePropName(name)}(${createPropName(name)}),`)}`);
     });
-    lines.push(`${indentation1}};`);
+    lines.push(`${createIndentation(1)}};`);
     lines.push(emptyLine);
-    lines.push(`${indentation1}return (`);
-    lines.push(`${indentation2}<${createContextName(name)}.Provider value={contextValue}>`);
-    lines.push(`${indentation3}{children}`);
-    lines.push(`${indentation2}</${createContextName(name)}.Provider>`);
-    lines.push(`${indentation1});`);
+    lines.push(`${createIndentation(1)}return (`);
+    lines.push(`${createIndentation(2)}<${createContextName(name)}.Provider value={contextValue}>`);
+    lines.push(`${createIndentation(3)}{children}`);
+    lines.push(`${createIndentation(2)}</${createContextName(name)}.Provider>`);
+    lines.push(`${createIndentation(1)});`);
     lines.push(`};`);
     return lines;
 };
@@ -379,28 +384,38 @@ const createContextInterfaceName = (name) => `I${toPascalCase(name)}Context`;
 
 const createContextInterface = ({ typeDef }) => {
     const { name, props } = typeDef;
-    const lines = createTypeDocumentation(`The ${toPascalCase(name)} context interface.`);
+    const lines = createJSDocDescription(createIndentation(0), { description: `The ${toPascalCase(name)} context interface.` });
     const interfaceName = createContextInterfaceName(name);
     lines.push(`export interface ${interfaceName} {`);
-    createPropDocumentation(indentation1, 'The component to be rendered.')
-        .forEach(line => lines.push(line));
-    lines.push(`${indentation1}${createProp('Component', '() => JSX.Element')};`);
+    
+    createJSDocDescription(createIndentation(1), { description: 'The component to be rendered.' })
+    .forEach(line => lines.push(line));
+    
+    lines.push(`${createIndentation(1)}${createProp('Component', '() => JSX.Element')};`);
     lines.push(emptyLine);
-    createPropDocumentation(indentation1, 'Renderes the component.', [
-        { type: 'Element | DocumentFragment | null', name: 'container', description: 'The container. Optional parameter.' }
-    ])
-        .forEach(line => lines.push(line));
-    lines.push(`${indentation1}${createProp('render', '(container: Element | DocumentFragment | null) => void')};`);
+
+    createJSDocDescription(createIndentation(1), {
+        description: 'Renderes the component.', 
+        params: [
+            { type: 'Element | DocumentFragment | null', name: 'container', description: 'The container. Optional parameter.' }
+        ]})
+    .forEach(line => lines.push(line));
+
+    lines.push(`${createIndentation(1)}${createProp('render', '(container: Element | DocumentFragment | null) => void')};`);
     props.forEach(p => {
         const { name, type } = p;
         lines.push(emptyLine);
-        createPropDocumentation(indentation1, `Gets the ${createPropName(name)}.`)
-            .forEach(line => lines.push(line));
-        lines.push(`${indentation1}${createProp(createGetPropName(name), `() => ${type}`)};`);
+
+        createJSDocDescription(createIndentation(1), { description: `Gets the ${createPropName(name)}.` })
+        .forEach(line => lines.push(line));
+
+        lines.push(`${createIndentation(1)}${createProp(createGetPropName(name), `() => ${type}`)};`);
         lines.push(emptyLine);
-        createPropDocumentation(indentation1, `Sets the ${createPropName(name)}.`)
-            .forEach(line => lines.push(line));
-        lines.push(`${indentation1}${createProp(createSetPropName(name), `(${createPropName(name)}: ${type}) => void;`)}`);
+        
+        createJSDocDescription(createIndentation(1), { description: `Sets the ${createPropName(name)}.` })
+        .forEach(line => lines.push(line));
+
+        lines.push(`${createIndentation(1)}${createProp(createSetPropName(name), `(${createPropName(name)}: ${type}) => void;`)}`);
     });
     lines.push('};');
     return lines;
@@ -412,13 +427,13 @@ const createComponentPropsInterface = ({ typeDef }) => {
     const { name, props } = typeDef;
     const lines = [];
     lines.push(`export interface ${componentPropsInterfaceName} {`);
-    lines.push(`${indentation1}${createProp('children', 'React.ReactNode')};`);
-    lines.push(`${indentation1}${createProp(createStatePropName(name), createStateInterfaceName(name))};`);
+    lines.push(`${createIndentation(1)}${createProp('children', 'React.ReactNode')};`);
+    lines.push(`${createIndentation(1)}${createProp(createStatePropName(name), createStateInterfaceName(name))};`);
     props.forEach(p => {
         const { name, type, isOptional } = p;
-        lines.push(`${indentation1}${createProp(createPropName(name), `${type}`, isOptional)};`);
-        lines.push(`${indentation1}${createProp(createUrlParamPropName(name), 'string', isOptional)};`);
-        lines.push(`${indentation1}${createProp(createSetEventHandlerPropName(name), `(${name}: ${type}) => void`, isOptional)};`);
+        lines.push(`${createIndentation(1)}${createProp(createPropName(name), `${type}`, isOptional)};`);
+        lines.push(`${createIndentation(1)}${createProp(createUrlParamPropName(name), 'string', isOptional)};`);
+        lines.push(`${createIndentation(1)}${createProp(createSetEventHandlerPropName(name), `(${name}: ${type}) => void`, isOptional)};`);
     });
     lines.push('};');
     return lines;
@@ -429,80 +444,175 @@ const createContextBuilderName = (name) => `${toPascalCase(name)}ContextBuilder`
 const createContextBuilderPropsVariable = ({ typeDef }) => {
     const { name, props } = typeDef;
     const lines = [];
-    lines.push(`${indentation1}private props: ${componentPropsInterfaceName} = {`);
-    lines.push(`${indentation2}${createProp('children', 'undefined')},`);
-    lines.push(`${indentation2}${createProp(createStatePropName(name), createDefaultStateName(name))},`);
+    lines.push(`${createIndentation(1)}private props: ${componentPropsInterfaceName} = {`);
+    lines.push(`${createIndentation(2)}${createProp('children', 'undefined')},`);
+    lines.push(`${createIndentation(2)}${createProp(createStatePropName(name), createDefaultStateName(name))},`);
     props.forEach(p => {
         const { name } = p;
-        lines.push(`${indentation2}${createProp(createPropName(name), 'undefined')},`);
-        lines.push(`${indentation2}${createProp(createUrlParamPropName(name), 'undefined')},`);
-        lines.push(`${indentation2}${createProp(createSetEventHandlerPropName(name), 'undefined')},`);
+        lines.push(`${createIndentation(2)}${createProp(createPropName(name), 'undefined')},`);
+        lines.push(`${createIndentation(2)}${createProp(createUrlParamPropName(name), 'undefined')},`);
+        lines.push(`${createIndentation(2)}${createProp(createSetEventHandlerPropName(name), 'undefined')},`);
     });
-    lines.push(`${indentation1}};`);
+    lines.push(`${createIndentation(1)}};`);
     return lines;
 };
 
-const createContextBuilderBuild = ({ typeDef }) => {
-    const { name, props } = typeDef;
-    const lines = [];
-    lines.push(`${indentation1}build() {`);
-    lines.push(`${indentation1}};`);
-    return lines;
-};
-
+/*
 const createContextBuilderComponent = () => {
     const lines = [];
-    lines.push(`${indentation1}const Component = () => (`);
-    lines.push(`${indentation2}<Router history={getHistory()}>`);
-    lines.push(`${indentation3}<Route>`);
-    lines.push(`${indentation4}<RouteComponent />`);
-    lines.push(`${indentation3}</Route>`);
-    lines.push(`${indentation2}</Router>`);
-    lines.push(`${indentation1});`);
+    lines.push(`${createIndentation(1)}const Component = () => (`);
+    lines.push(`${createIndentation(2)}<Router history={getHistory()}>`);
+    lines.push(`${createIndentation(3)}<Route>`);
+    lines.push(`${createIndentation(4)}<RouteComponent />`);
+    lines.push(`${createIndentation(3)}</Route>`);
+    lines.push(`${createIndentation(2)}</Router>`);
+    lines.push(`${createIndentation(1)});`);
     return lines;
 };
 
 const createContextBuilderRender = () => {
     const lines = [];
-    lines.push(`${indentation1}const render = (container: Element | DocumentFragment | null) =>`);
-    lines.push(`${indentation2}ReactDOM.render(`);
-    lines.push(`${indentation3}<React.StrictMode>`);
-    lines.push(`${indentation4}<Component />`);
-    lines.push(`${indentation3}</React.StrictMode>,`);
-    lines.push(`${indentation3}container || document.createElement('div')`);
-    lines.push(`${indentation2});`);
+    lines.push(`${createIndentation(1)}const render = (container: Element | DocumentFragment | null) =>`);
+    lines.push(`${createIndentation(2)}ReactDOM.render(`);
+    lines.push(`${createIndentation(3)}<React.StrictMode>`);
+    lines.push(`${createIndentation(4)}<Component />`);
+    lines.push(`${createIndentation(3)}</React.StrictMode>,`);
+    lines.push(`${createIndentation(3)}container || document.createElement('div')`);
+    lines.push(`${createIndentation(2)});`);
     return lines;
 };
 
-const createContextBuilderGetter = ({ typeDef }) => {
-    const { name, props } = typeDef;
+const createContextBuilderPropGetter = ({ typeDef, prop }) => {
+    const { name: typeName } = typeDef;
+    const { name: propName } = prop;
     const lines = [];
+    lines.push(`${createIndentation(1)}const ${createGetPropName(propName)} = () => {`);
+    lines.push(`${createIndentation(2)}const { ${createStatePropName(propName)} } = this.props.${createStatePropName(typeName)} || {};`);
+    lines.push(`${createIndentation(2)}return ${createStatePropName(propName)};`);
+    lines.push(`${createIndentation(1)}};`);
     return lines;
 };
 
-const createContextBuilderSetter = ({ typeDef }) => {
-    const { name, props } = typeDef;
+const createContextBuilderPropSetter = ({ typeDef, prop }) => {
+    const { name: typeName } = typeDef;
+    const { name: propName, type: propType } = prop;
     const lines = [];
+    lines.push(`${createIndentation(1)}const ${createSetPropName(propName)} = (${createPropName(propName)}: ${propType}) => {`);
+    lines.push(`${createIndentation(2)}const { ${createSetStatePropName(propName)} } = this.props.${createStatePropName(typeName)} || {};`);
+    lines.push(`${createIndentation(2)}${createSetStatePropName(propName)} && ${createSetStatePropName(propName)}(${createPropName(propName)});`);
+    lines.push(`${createIndentation(1)}};`);
+    return lines;
+};
+
+const createContextBuilderProps = ({ typeDef }) => {
+    const { props } = typeDef;
+
+    const lines = props.map(prop => [
+            createContextBuilderPropGetter,
+            createContextBuilderPropSetter
+        ]
+        .map(x => x({ typeDef, prop }))
+        .reduce((acc, currentValue) => 
+            acc = acc.concat(currentValue).concat([emptyLine]), []) 
+    )
+    .reduce((acc, currentValue) => 
+            acc = acc.concat(currentValue), []);
+
+    return lines;
+};
+*/
+
+const createContextBuilderBuild = ({ typeDef }) => {
+    const { name, props } = typeDef;
+    const lines = createJSDocDescription(createIndentation(1), {
+        description: `Builds the ${toPascalCase(name)} Context.`,
+        returns: { type: `${createContextInterfaceName(name)}`, description: `The ${toPascalCase(name)} Context Interface.` }
+    });
+    lines.push(`${createIndentation(1)}build() {`);
+    lines.push(`${createIndentation(1)}};`);
+    return lines;
+};
+
+const createContextBuilderWithProperty = ({ prop, valueFunc }) => {
+    const { name, type } = prop;
+    const lines = [];
+    const value = valueFunc ? `${valueFunc}(${createPropName(name)})` : createPropName(name);
+    lines.push(`${createIndentation(1)}${createWithPropName(name)}(${createPropName(name)}: ${type}) {`);
+    lines.push(`${createIndentation(2)}this.props.${createPropName(name)} = ${value};`)
+    lines.push(`${createIndentation(2)}return this;`)
+    lines.push(`${createIndentation(1)}}`);
+    return lines;
+};
+
+const createContextBuilderWithProperties = ({ typeDef }) => {
+    const { props } = typeDef;
+    const lines = [];
+    const childrenPropName = 'children';
+    const childrenPropType = '(() => JSX.Element) | (Array<() => JSX.Element>)';
+
+    createJSDocDescription(createIndentation(1), { 
+        description: [
+            `Sets the ${childrenPropName}.`,
+            `All the children within the context will have the same state.`
+        ],
+        params: [
+            { type: childrenPropType, name: childrenPropName, description: `The ${childrenPropName}.` }
+        ]
+    })
+    .forEach(line => lines.push(line));
+
+    createContextBuilderWithProperty({ 
+        prop: { name: childrenPropName, type: childrenPropType }, 
+        valueFunc: 'createChildren' 
+    })
+    .forEach(line => lines.push(line));
+
+    props.map(p => {
+        const { name, type, defaultValue } = p;
+        return [
+            { ...p, description: `. Default value: ${createValue(defaultValue, type)}` },
+            { name: createUrlParamPropName(name), type: 'string', description: ` to be synchronized with the ${createPropName(name)} state` },
+            { name: createSetEventHandlerPropName(name), type: `(${createPropName(name)}: ${type}) => void` }
+        ];
+    })
+    .reduce((acc, currentValue) => acc = acc.concat(currentValue), [])
+    .forEach(p => {
+        const { name, type, description = '' } = p;
+        lines.push(emptyLine);
+
+        createJSDocDescription(createIndentation(1), { 
+            description: `Sets the ${toWords(createPropName(name))}${description}.`,
+            params: [
+                { type, name, description: `The ${toWords(name)}.` }
+            ]
+        })
+        .forEach(line => lines.push(line));
+
+        createContextBuilderWithProperty({ prop: p })
+        .forEach(line => lines.push(line));
+    });
+
     return lines;
 };
 
 const createContextBuilder = ({ typeDef }) => {
     const { name } = typeDef;
-    const lines = createTypeDocumentation([
-        `The ${toPascalCase(name)} context builder.`,
-        `Helps to build the ${toPascalCase(name)} context and manage its state.`
-    ]);
+    const lines = createJSDocDescription(createIndentation(0), {
+        description: [
+            `The ${toPascalCase(name)} context builder.`,
+            `Helps to build the ${toPascalCase(name)} context and manage its state.`
+        ]
+    });
     const className = createContextBuilderName(name);
     lines.push(`export class ${className} {`);
 
-    const parts = [
-        createContextBuilderPropsVariable({ typeDef }),
-        createContextBuilderBuild({ typeDef }),
-        createContextBuilderComponent(),
-        createContextBuilderRender()
-    ];
-
-    parts.reduce((acc, currentValue, i) => {
+    [
+        createContextBuilderPropsVariable,
+        createContextBuilderBuild,
+        createContextBuilderWithProperties
+    ]
+    .map(x => x({ typeDef }))
+    .reduce((acc, currentValue, i) => {
         i > 0 && (acc = acc.concat([emptyLine]));
         acc = acc.concat(currentValue);
         return acc;
@@ -510,6 +620,10 @@ const createContextBuilder = ({ typeDef }) => {
     .forEach(line => lines.push(line));
 
     lines.push('};');
+
+    lines.push(emptyLine);
+    lines.push(`export default ${createContextBuilderName(name)};`);
+
     return lines;
 };
 

@@ -1,13 +1,17 @@
 'use strict';
 
-const toPascalCase = (str) => str.replace(/(\w)(\w*)/g, (g0,g1,g2) => 
-    g1.toUpperCase() + g2.toLowerCase());
+const toPascalCase = (str) => str.replace(/(?:^\w|[a-z]|\b\w)/g, (word, index) => 
+    index === 0 ? word.toUpperCase() : word.toLowerCase()
+).replace(/\s+/g, '');
 
 const toCamelCase = (str) => str.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => 
     index === 0 ? word.toLowerCase() : word.toUpperCase()
   ).replace(/\s+/g, '');
 
+const toWords = (str) => str.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase()
+
 module.exports = {
     toPascalCase,
-    toCamelCase
+    toCamelCase,
+    toWords
 };            
