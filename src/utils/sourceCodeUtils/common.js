@@ -1,6 +1,6 @@
 'use strict';
 
-const { toCamelCase, toPascalCase } = require('../stringUtils');
+const { toCamelCase, toPascalCase, emptyLine } = require('../stringUtils');
 
 const createPropName = (name) => toCamelCase(name);
 const createSetPropName = (name) => `set${toPascalCase(name)}`;    
@@ -37,6 +37,16 @@ const createValue = (value, type) => {
     return value;
 };
 
+const concatReducer = (acc, currentValue) => acc = acc.concat(currentValue);
+
+const concatWithEmptyLineReducer = (acc, currentValue) => acc = acc.concat(currentValue).concat([emptyLine]);
+
+const concatWithEmptyLineButFirstReducer = (acc, currentValue, i) => {
+    i > 0 && (acc = acc.concat([emptyLine]));
+    acc = acc.concat(currentValue);
+    return acc;
+};
+
 module.exports = {
     createPropName,
     createSetPropName,
@@ -53,5 +63,8 @@ module.exports = {
     createContextFileName,
     createProp,
     createHeader,
-    createValue
+    createValue,
+    concatReducer,
+    concatWithEmptyLineReducer,
+    concatWithEmptyLineButFirstReducer
 };

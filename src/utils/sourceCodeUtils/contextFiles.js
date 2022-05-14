@@ -16,7 +16,8 @@ const {
     createContextFileName,
     createProp,
     createHeader,
-    createValue
+    createValue,
+    concatWithEmptyLineReducer
 } = require('./common');
 
 const createStatePropsInterfaceName = (name) => `I${toPascalCase(name)}StateProps`;
@@ -227,8 +228,7 @@ const createContextFileContent = (typeDef, sourceCodeGeneratorInfo) => {
         createContextProvider
     ]
     .map(x => x({ sourceCodeGeneratorInfo, typeDef }))
-    .reduce((acc, currentValue) => 
-        acc = acc.concat(currentValue).concat([emptyLine]), []);
+    .reduce(concatWithEmptyLineReducer, []);
 
     const content = lines.join(newLine);
     return content;

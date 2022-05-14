@@ -20,7 +20,10 @@ const {
     createContextFileName,
     createProp,
     createHeader,
-    createValue
+    createValue,
+    concatReducer,
+    concatWithEmptyLineReducer,
+    concatWithEmptyLineButFirstReducer
 } = require('./common');
 
 const createContextInterfaceName = (name) => `I${toPascalCase(name)}Context`;
@@ -181,11 +184,9 @@ const createContextBuilderProps = ({ typeDef }) => {
             createContextBuilderPropSetter
         ]
         .map(x => x({ typeDef, prop }))
-        .reduce((acc, currentValue) => 
-            acc = acc.concat(currentValue).concat([emptyLine]), []) 
+        .reduce(concatWithEmptyLineReducer, []) 
     )
-    .reduce((acc, currentValue) => 
-            acc = acc.concat(currentValue), []);
+    .reduce(concatReducer, []);
 
     return lines;
 };
@@ -244,7 +245,7 @@ const createContextBuilderWithProperties = ({ typeDef }) => {
             { name: createSetEventHandlerPropName(name), type: `(${createPropName(name)}: ${type}) => void` }
         ];
     })
-    .reduce((acc, currentValue) => acc = acc.concat(currentValue), [])
+    .reduce(concatReducer, [])
     .forEach(p => {
         const { name, type, description = '' } = p;
         lines.push(emptyLine);
@@ -281,11 +282,7 @@ const createContextBuilder = ({ typeDef }) => {
         createContextBuilderWithProperties
     ]
     .map(x => x({ typeDef }))
-    .reduce((acc, currentValue, i) => {
-        i > 0 && (acc = acc.concat([emptyLine]));
-        acc = acc.concat(currentValue);
-        return acc;
-    }, [])
+    .reduce(concatWithEmptyLineButFirstReducer, [])
     .forEach(line => lines.push(line));
 
     lines.push('};');
@@ -304,8 +301,7 @@ const createContextBuilderFileContent = (typeDef, sourceCodeGeneratorInfo) => {
         createContextBuilder
     ]
     .map(x => x({ sourceCodeGeneratorInfo, typeDef }))
-    .reduce((acc, currentValue) => 
-        acc = acc.concat(currentValue).concat([emptyLine]), []);
+    .reduce(concatWithEmptyLineReducer, []);
 
     const content = lines.join(newLine);
     return content;
