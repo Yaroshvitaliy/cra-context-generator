@@ -4,13 +4,13 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { Router, Route, useHistory } from 'react-router-dom';
 import { History, Location } from 'history';
-import { AppContextProvider, IAppState, AppState, DefaultAppState } from './appContext';
+import { WidgetContextProvider, IWidgetState, WidgetState, DefaultWidgetState } from './widgetContext';
 import { createChildren, getHistory, deserializePathname, serializePathname } from './contextBuilderUtils';
 
 /**
- * The App context interface.
+ * The Widget context interface.
  */
-export interface IAppContext {
+export interface IWidgetContext {
     /**
      * The component to be rendered.
      */
@@ -22,16 +22,6 @@ export interface IAppContext {
      * @param {Element | DocumentFragment | null} container The container. Optional parameter.
      */
     render: (container: Element | DocumentFragment | null) => void;
-
-    /**
-     * Gets the language.
-     */
-    getLanguage: () => string;
-
-    /**
-     * Sets the language.
-     */
-    setLanguage: (language: string) => void;
 
     /**
      * Gets the theme.
@@ -46,63 +36,50 @@ export interface IAppContext {
 
 interface IComponentProps {
     children: React.ReactNode;
-    appState: IAppState;
-    language?: string;
-    languageUrlParam?: string;
-    languageSetEventHandler?: (language: string) => void;
+    widgetState: IWidgetState;
     theme?: string;
     themeUrlParam?: string;
     themeSetEventHandler?: (theme: string) => void;
 }
 
 /**
- * The App context builder.
- * Helps to build the App context and manage its state.
+ * The Widget context builder.
+ * Helps to build the Widget context and manage its state.
  */
-export class AppContextBuilder {
+export class WidgetContextBuilder {
     private props: IComponentProps = {
         children: undefined,
-        appState: DefaultAppState,
-        language: undefined,
-        languageSetEventHandler: undefined,
-        languageUrlParam: undefined,
+        widgetState: DefaultWidgetState,
         theme: undefined,
         themeSetEventHandler: undefined,
         themeUrlParam: undefined,
     };
 
     /**
-     * Builds the App Context.
+     * Builds the Widget Context.
      *
-     * @returns {IAppContext} The App Context Interface.
+     * @returns {IWidgetContext} The Widget Context Interface.
      */
     build() {
         const {
-            language: initialLanguage,
-            languageUrlParam,
             theme: initialTheme,
             themeUrlParam,
         } = this.props;
 
-        const syncStateWithLocation = (appState: IAppState, location: Location<any>) => {
+        const syncStateWithLocation = (widgetState: IWidgetState, location: Location<any>) => {
             const {
-                setLanguageState,
                 setThemeState,
-            } = appState;
+            } = widgetState;
             const pathname = deserializePathname(location.pathname);
-            const language = languageUrlParam && pathname[languageUrlParam] && decodeURIComponent(pathname[languageUrlParam]);
             const theme = themeUrlParam && pathname[themeUrlParam] && decodeURIComponent(pathname[themeUrlParam]);
-            language && setLanguageState && setLanguageState(language);
             theme && setThemeState && setThemeState(theme);
         };
 
-        const syncHistoryWithState = (appState: IAppState, history: History<any>) => {
+        const syncHistoryWithState = (widgetState: IWidgetState, history: History<any>) => {
             const {
-                languageState,
                 themeState,
-            } = appState;
+            } = widgetState;
             const pathname = deserializePathname(history.location.pathname);
-            languageUrlParam && (pathname[languageUrlParam] = encodeURIComponent(languageState));
             themeUrlParam && (pathname[themeUrlParam] = encodeURIComponent(themeState));
             const serializedPathname = serializePathname(pathname);
             history.replace({ pathname:  serializedPathname});
@@ -110,25 +87,22 @@ export class AppContextBuilder {
 
         const RouteComponent  = () => {
             const history = useHistory();
-            const appState = AppState({
-                language: initialLanguage,
+            const widgetState = WidgetState({
                 theme: initialTheme,
             });
             const {
                 children,
-                language,
-                languageUrlParam,
                 theme,
                 themeUrlParam,
                 ...rest
             } = this.props;
-            React.useEffect(() => syncStateWithLocation(appState, history.location), []);
-            React.useEffect(() => syncHistoryWithState(appState, history), [appState, history]);
-            this.props.appState = appState;
+            React.useEffect(() => syncStateWithLocation(widgetState, history.location), []);
+            React.useEffect(() => syncHistoryWithState(widgetState, history), [widgetState, history]);
+            this.props.widgetState = widgetState;
             return (
-                <AppContextProvider {...rest} appState={appState}>
+                <WidgetContextProvider {...rest} widgetState={widgetState}>
                     { children }
-                </AppContextProvider>
+                </WidgetContextProvider>
             );
         };
 
@@ -148,30 +122,19 @@ export class AppContextBuilder {
                 container || document.createElement('div')
             );
 
-        const getLanguage = () => {
-            const { languageState } = this.props.appState || {};
-            return languageState;
-        };
-
-        const setLanguage = (language: string) => {
-            const { setLanguageState } = this.props.appState || {};
-            setLanguageState && setLanguageState(language);
-        };
         const getTheme = () => {
-            const { themeState } = this.props.appState || {};
+            const { themeState } = this.props.widgetState || {};
             return themeState;
         };
 
         const setTheme = (theme: string) => {
-            const { setThemeState } = this.props.appState || {};
+            const { setThemeState } = this.props.widgetState || {};
             setThemeState && setThemeState(theme);
         };
 
-        const context: IAppContext = {
+        const context: IWidgetContext = {
             Component,
             render,
-            getLanguage,
-            setLanguage,
             getTheme,
             setTheme,
         };
@@ -191,37 +154,7 @@ export class AppContextBuilder {
     }
 
     /**
-     * Sets the language. Default value: 'en'.
-     *
-     * @param {string} language The language.
-     */
-    withLanguage(language: string) {
-        this.props.language = language;
-        return this;
-    }
-
-    /**
-     * Sets the language url param to be synchronized with the language state.
-     *
-     * @param {string} languageUrlParam The language url param.
-     */
-    withLanguageUrlParam(languageUrlParam: string) {
-        this.props.languageUrlParam = languageUrlParam;
-        return this;
-    }
-
-    /**
-     * Sets the language set event handler.
-     *
-     * @param {(language: string) => void} languageSetEventHandler The language set event handler.
-     */
-    withLanguageSetEventHandler(languageSetEventHandler: (language: string) => void) {
-        this.props.languageSetEventHandler = languageSetEventHandler;
-        return this;
-    }
-
-    /**
-     * Sets the theme. Default value: 'default'.
+     * Sets the theme. Default value: 'en'.
      *
      * @param {string} theme The theme.
      */
@@ -251,4 +184,4 @@ export class AppContextBuilder {
     }
 };
 
-export default AppContextBuilder;
+export default WidgetContextBuilder;

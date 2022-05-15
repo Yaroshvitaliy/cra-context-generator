@@ -13,7 +13,7 @@
         },
         {
             "disable": false,
-            "disableContextBuilder": true,
+            "disableContextBuilder": false,
             "description": "The widget state properties. A Widget can be put into the given HTML document placeholder. This is a wrapper for any component.",
             "name": "Widget",
             "props": [
@@ -21,7 +21,7 @@
             ]
         },
         {
-            "disable": true,
+            "disable": false,
             "disableContextBuilder": false,
             "description": "The switch button state properties.",
             "name": "SwitchButton",

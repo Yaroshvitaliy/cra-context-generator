@@ -10,13 +10,14 @@ const createSetStatePropName = (name) => `set${toPascalCase(name)}State`;
 const createSetEventHandlerPropName = (name) => `${toCamelCase(name)}SetEventHandler`;   
 const createUrlParamPropName = (name) => `${toCamelCase(name)}UrlParam`;   
 const createWithPropName = (name) => `with${toPascalCase(name)}`;
+const createInitialPropName = (name) => `initial${toPascalCase(name)}`;
 
 const createStateInterfaceName = (name) => `I${toPascalCase(name)}State`;
 const createDefaultStateName = (name) => `Default${toPascalCase(name)}State`;
 const createStateName = (name) => `${toPascalCase(name)}State`;
 const createContextProviderName = (name) => `${toPascalCase(name)}ContextProvider`;
 
-const createContextFileName = (name) => `${toCamelCase(name)}Context.ts`;
+const createContextFileName = (name) => `${toCamelCase(name)}Context.tsx`;
 
 const createProp = (name, typeOrValue, isOptional, canBeUndefined) => 
     `${name}${isOptional ? '?' : ''}: ${canBeUndefined ? `undefined | ${typeOrValue}` : typeOrValue }`;
@@ -56,6 +57,7 @@ module.exports = {
     createSetEventHandlerPropName,
     createUrlParamPropName,
     createWithPropName,
+    createInitialPropName,
     createStateInterfaceName,
     createDefaultStateName,
     createStateName,

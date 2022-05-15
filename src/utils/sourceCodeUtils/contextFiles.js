@@ -42,7 +42,7 @@ const createStatePropsInterface = ({ typeDef }) => {
         const { name, type, isOptional } = p;
         lines.push(`${createIndentation(1)}${createProp(createPropName(name), type, isOptional)};`);
     });
-    lines.push('};');
+    lines.push('}');
     return lines;
 };
 
@@ -56,7 +56,7 @@ const createStateInterface = ({ typeDef }) => {
         lines.push(`${createIndentation(1)}${createProp(createStatePropName(name), type)};`);
         lines.push(`${createIndentation(1)}${createProp(createSetStatePropName(name), `React.Dispatch<React.SetStateAction<${type}>>`, false, isOptional)};`);
     });
-    lines.push('};');
+    lines.push('}');
     return lines;
 };
 
@@ -71,7 +71,7 @@ const createContextProviderPropsInterface = ({ typeDef }) => {
         const { name, type, isOptional } = p;
         lines.push(`${createIndentation(1)}${createProp(createSetEventHandlerPropName(name), `(${name}: ${type}) => void`, isOptional)};`);
     });
-    lines.push('};');
+    lines.push('}');
     return lines;
 };
 
@@ -85,7 +85,7 @@ const createContextValueInterface = ({ typeDef }) => {
         lines.push(`${createIndentation(1)}${createProp(createPropName(name), type)};`);
         lines.push(`${createIndentation(1)}${createProp(createSetPropName(name), `(${name}: ${type}) => void;`)}`);
     });
-    lines.push('};');
+    lines.push('}');
     return lines;
 };
 
@@ -145,7 +145,7 @@ const createState = ({ typeDef }) => {
         lines.push(`${createIndentation(1)}const [ ${createStatePropName(name)}, ${createSetStatePropName(name)} ] = React.useState<${type}>(${createPropName(name)} || ${createDefaultValueName(name)});`);
     });
     lines.push(emptyLine);
-    lines.push(`${createIndentation(1)}const ${createStatePropName(name)} = {`);
+    lines.push(`${createIndentation(1)}const ${createStatePropName(name)}: ${createStateInterfaceName(name)} = {`);
     props.forEach(p => {
         const { name } = p;
         lines.push(`${createIndentation(2)}${createStatePropName(name)},`);
@@ -153,7 +153,7 @@ const createState = ({ typeDef }) => {
     });
     lines.push(`${createIndentation(1)}};`);
     lines.push(emptyLine);
-    lines.push(`${createIndentation(1)}return ${createStatePropName(name)}`);
+    lines.push(`${createIndentation(1)}return ${createStatePropName(name)};`);
     lines.push('};');
     return lines;
 };

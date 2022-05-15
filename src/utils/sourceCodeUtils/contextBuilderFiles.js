@@ -13,6 +13,7 @@ const {
     createSetEventHandlerPropName,
     createUrlParamPropName,
     createWithPropName,
+    createInitialPropName,
     createStateInterfaceName,
     createDefaultStateName,
     createStateName,
@@ -23,13 +24,15 @@ const {
     createValue,
     concatReducer,
     concatWithEmptyLineReducer,
-    concatWithEmptyLineButFirstReducer
+    concatWithEmptyLineButFirstReducer,
+    createSetStatePropName
 } = require('./common');
 
 const createContextInterfaceName = (name) => `I${toPascalCase(name)}Context`;
-const componentPropsInterfaceName = 'IComponentProps ';
+const componentPropsInterfaceName = 'IComponentProps';
 const createContextBuilderName = (name) => `${toPascalCase(name)}ContextBuilder`;
 const createContextBuilderFileName = (name) => `${toCamelCase(name)}ContextBuilder.tsx`;
+const syncStateWithLocationName = 'syncStateWithLocation';
 
 const createContextBuilderHeader = ({ sourceCodeGeneratorInfo, typeDef }) => {
     const { name } = typeDef;
@@ -93,14 +96,14 @@ const createContextInterface = ({ typeDef }) => {
 
         lines.push(`${createIndentation(1)}${createProp(createSetPropName(name), `(${createPropName(name)}: ${type}) => void;`)}`);
     });
-    lines.push('};');
+    lines.push('}');
     return lines;
 };
 
 const createComponentPropsInterface = ({ typeDef }) => {
     const { name, props } = typeDef;
     const lines = [];
-    lines.push(`export interface ${componentPropsInterfaceName} {`);
+    lines.push(`interface ${componentPropsInterfaceName} {`);
     lines.push(`${createIndentation(1)}${createProp('children', 'React.ReactNode')};`);
     lines.push(`${createIndentation(1)}${createProp(createStatePropName(name), createStateInterfaceName(name))};`);
     props.forEach(p => {
@@ -109,7 +112,7 @@ const createComponentPropsInterface = ({ typeDef }) => {
         lines.push(`${createIndentation(1)}${createProp(createUrlParamPropName(name), 'string', isOptional)};`);
         lines.push(`${createIndentation(1)}${createProp(createSetEventHandlerPropName(name), `(${name}: ${type}) => void`, isOptional)};`);
     });
-    lines.push('};');
+    lines.push('}');
     return lines;
 };
 
@@ -122,83 +125,210 @@ const createContextBuilderPropsVariable = ({ typeDef }) => {
     props.forEach(p => {
         const { name } = p;
         lines.push(`${createIndentation(2)}${createProp(createPropName(name), 'undefined')},`);
-        lines.push(`${createIndentation(2)}${createProp(createUrlParamPropName(name), 'undefined')},`);
         lines.push(`${createIndentation(2)}${createProp(createSetEventHandlerPropName(name), 'undefined')},`);
+        lines.push(`${createIndentation(2)}${createProp(createUrlParamPropName(name), 'undefined')},`);
     });
     lines.push(`${createIndentation(1)}};`);
     return lines;
 };
 
-/*
-const createContextBuilderComponent = () => {
+const createBuildVarDeclarations = ({ typeDef }) => {
+    const { props } = typeDef;
     const lines = [];
-    lines.push(`${createIndentation(1)}const Component = () => (`);
-    lines.push(`${createIndentation(2)}<Router history={getHistory()}>`);
-    lines.push(`${createIndentation(3)}<Route>`);
-    lines.push(`${createIndentation(4)}<RouteComponent />`);
-    lines.push(`${createIndentation(3)}</Route>`);
-    lines.push(`${createIndentation(2)}</Router>`);
-    lines.push(`${createIndentation(1)});`);
+    lines.push(`${createIndentation(2)}const {`);
+    props.forEach(p => {
+        const { name } = p;
+        lines.push(`${createIndentation(3)}${createProp(createPropName(name), createInitialPropName(name))},`);
+        lines.push(`${createIndentation(3)}${createUrlParamPropName(name)},`);
+    });
+    lines.push(`${createIndentation(2)}} = this.props;`);
     return lines;
 };
 
-const createContextBuilderRender = () => {
+const createBuildSyncStateWithLocation = ({ typeDef }) => {
+    const { name, props } = typeDef;
     const lines = [];
-    lines.push(`${createIndentation(1)}const render = (container: Element | DocumentFragment | null) =>`);
-    lines.push(`${createIndentation(2)}ReactDOM.render(`);
-    lines.push(`${createIndentation(3)}<React.StrictMode>`);
-    lines.push(`${createIndentation(4)}<Component />`);
-    lines.push(`${createIndentation(3)}</React.StrictMode>,`);
-    lines.push(`${createIndentation(3)}container || document.createElement('div')`);
+    lines.push(`${createIndentation(2)}const ${syncStateWithLocationName} = ` + 
+        `(${createStatePropName(name)}: ${createStateInterfaceName(name)}, ` + 
+        `location: Location<any>) => {`);
+        lines.push(`${createIndentation(3)}const {`);
+        props.forEach(p => {
+            const { name } = p;
+            lines.push(`${createIndentation(4)}${createSetStatePropName(name)},`);
+        });
+        lines.push(`${createIndentation(3)}} = ${createStatePropName(name)};`);
+        lines.push(`${createIndentation(3)}const pathname = deserializePathname(location.pathname);`);
+        props.forEach(p => {
+            const { name } = p;
+            const urlParamName = createUrlParamPropName(name);
+            lines.push(`${createIndentation(3)}const ${createPropName(name)} = ${urlParamName} && pathname[${urlParamName}] && decodeURIComponent(pathname[${urlParamName}]);`);
+        });
+        props.forEach(p => {
+            const { name } = p;
+            const setStateName = createSetStatePropName(name);
+            lines.push(`${createIndentation(3)}${createPropName(name)} && ${setStateName} && ${setStateName}(${createPropName(name)});`);
+        });
+    lines.push(`${createIndentation(2)}};`);
+    return lines;
+};
+
+const createBuildSyncHistoryWithState = ({ typeDef }) => {
+    const { name, props } = typeDef;
+    const lines = [];
+    lines.push(`${createIndentation(2)}const syncHistoryWithState = (${createStatePropName(name)}: ${createStateInterfaceName(name)}, ` + 
+        `history: History<any>) => {`);
+    lines.push(`${createIndentation(3)}const {`);
+    props.forEach(p => {
+        const { name } = p;
+        lines.push(`${createIndentation(4)}${createStatePropName(name)},`);
+    });
+    lines.push(`${createIndentation(3)}} = ${createStatePropName(name)};`);
+    lines.push(`${createIndentation(3)}const pathname = deserializePathname(history.location.pathname);`);
+    props.forEach(p => {
+        const { name } = p;
+        const urlParamName = createUrlParamPropName(name);
+        lines.push(`${createIndentation(3)}${urlParamName} && (pathname[${urlParamName}] = encodeURIComponent(${createStatePropName(name)}));`);
+    });
+    lines.push(`${createIndentation(3)}const serializedPathname = serializePathname(pathname);`);
+    lines.push(`${createIndentation(3)}history.replace({ pathname:  serializedPathname});`);
+    lines.push(`${createIndentation(2)}};`);
+    return lines;
+};
+
+const createBuildRouteComponent = ({ typeDef }) => {
+    const { name, props } = typeDef;
+    const statePropName = createStatePropName(name);
+    const lines = [];
+    lines.push(`${createIndentation(2)}const RouteComponent  = () => {`);
+    lines.push(`${createIndentation(3)}const history = useHistory();`);
+    lines.push(`${createIndentation(3)}const ${statePropName} = ${createStateName(name)}({`);
+    props.forEach(p => {
+        const { name } = p;
+        lines.push(`${createIndentation(4)}${createProp(createPropName(name), createInitialPropName(name))},`);
+    });
+    lines.push(`${createIndentation(3)}});`);
+    lines.push(`${createIndentation(3)}const {`);
+    lines.push(`${createIndentation(4)}children,`);
+    props.forEach(p => {
+        const { name } = p;
+        lines.push(`${createIndentation(4)}${createPropName(name)},`);
+        lines.push(`${createIndentation(4)}${createUrlParamPropName(name)},`);
+    });
+    lines.push(`${createIndentation(4)}...rest`);
+    lines.push(`${createIndentation(3)}} = this.props;`);
+    lines.push(`${createIndentation(3)}React.useEffect(() => syncStateWithLocation(${statePropName}, history.location), []);`);
+    lines.push(`${createIndentation(3)}React.useEffect(() => syncHistoryWithState(${statePropName}, history), [${statePropName}, history]);`);
+    lines.push(`${createIndentation(3)}this.props.${statePropName} = ${statePropName};`);
+    lines.push(`${createIndentation(3)}return (`);
+    lines.push(`${createIndentation(4)}<${createContextProviderName(name)} {...rest} ${statePropName}={${statePropName}}>`);
+    lines.push(`${createIndentation(5)}{ children }`);
+    lines.push(`${createIndentation(4)}</${createContextProviderName(name)}>`);
+    lines.push(`${createIndentation(3)});`);
+    lines.push(`${createIndentation(2)}};`);
+    return lines;
+};
+
+const createBuildComponent = ({ typeDef }) => {
+    const lines = [];
+    lines.push(`${createIndentation(2)}const Component = () => (`);
+    lines.push(`${createIndentation(3)}<Router history={getHistory()}>`);
+    lines.push(`${createIndentation(4)}<Route>`);
+    lines.push(`${createIndentation(5)}<RouteComponent />`);
+    lines.push(`${createIndentation(4)}</Route>`);
+    lines.push(`${createIndentation(3)}</Router>`);
     lines.push(`${createIndentation(2)});`);
     return lines;
 };
 
-const createContextBuilderPropGetter = ({ typeDef, prop }) => {
+const createBuildRender = ({ typeDef }) => {
+    const lines = [];
+    lines.push(`${createIndentation(2)}const render = (container: Element | DocumentFragment | null) =>`);
+    lines.push(`${createIndentation(3)}ReactDOM.render(`);
+    lines.push(`${createIndentation(4)}<React.StrictMode>`);
+    lines.push(`${createIndentation(5)}<Component />`);
+    lines.push(`${createIndentation(4)}</React.StrictMode>,`);
+    lines.push(`${createIndentation(4)}container || document.createElement('div')`);
+    lines.push(`${createIndentation(3)});`);
+    return lines;
+};
+
+const createBuildPropGetter = ({ typeDef, prop }) => {
     const { name: typeName } = typeDef;
     const { name: propName } = prop;
     const lines = [];
-    lines.push(`${createIndentation(1)}const ${createGetPropName(propName)} = () => {`);
-    lines.push(`${createIndentation(2)}const { ${createStatePropName(propName)} } = this.props.${createStatePropName(typeName)} || {};`);
-    lines.push(`${createIndentation(2)}return ${createStatePropName(propName)};`);
-    lines.push(`${createIndentation(1)}};`);
+    lines.push(`${createIndentation(2)}const ${createGetPropName(propName)} = () => {`);
+    lines.push(`${createIndentation(3)}const { ${createStatePropName(propName)} } = this.props.${createStatePropName(typeName)} || {};`);
+    lines.push(`${createIndentation(3)}return ${createStatePropName(propName)};`);
+    lines.push(`${createIndentation(2)}};`);
     return lines;
 };
 
-const createContextBuilderPropSetter = ({ typeDef, prop }) => {
+const createBuildPropSetter = ({ typeDef, prop }) => {
     const { name: typeName } = typeDef;
     const { name: propName, type: propType } = prop;
     const lines = [];
-    lines.push(`${createIndentation(1)}const ${createSetPropName(propName)} = (${createPropName(propName)}: ${propType}) => {`);
-    lines.push(`${createIndentation(2)}const { ${createSetStatePropName(propName)} } = this.props.${createStatePropName(typeName)} || {};`);
-    lines.push(`${createIndentation(2)}${createSetStatePropName(propName)} && ${createSetStatePropName(propName)}(${createPropName(propName)});`);
-    lines.push(`${createIndentation(1)}};`);
+    lines.push(`${createIndentation(2)}const ${createSetPropName(propName)} = (${createPropName(propName)}: ${propType}) => {`);
+    lines.push(`${createIndentation(3)}const { ${createSetStatePropName(propName)} } = this.props.${createStatePropName(typeName)} || {};`);
+    lines.push(`${createIndentation(3)}${createSetStatePropName(propName)} && ${createSetStatePropName(propName)}(${createPropName(propName)});`);
+    lines.push(`${createIndentation(2)}};`);
     return lines;
 };
 
-const createContextBuilderProps = ({ typeDef }) => {
+const createBuildProps = ({ typeDef }) => {
     const { props } = typeDef;
 
     const lines = props.map(prop => [
-            createContextBuilderPropGetter,
-            createContextBuilderPropSetter
+            createBuildPropGetter,
+            createBuildPropSetter
         ]
         .map(x => x({ typeDef, prop }))
-        .reduce(concatWithEmptyLineReducer, []) 
+        .reduce(concatWithEmptyLineButFirstReducer, []) 
     )
     .reduce(concatReducer, []);
 
     return lines;
 };
-*/
+
+const createBuildContext = ({ typeDef }) => {
+    const { name, props } = typeDef;
+    const lines = [];
+    lines.push(`${createIndentation(2)}const context: ${createContextInterfaceName(name)} = {`);
+    lines.push(`${createIndentation(3)}Component,`);
+    lines.push(`${createIndentation(3)}render,`);
+    props.forEach(p => {
+        const { name } = p;
+        lines.push(`${createIndentation(3)}${createGetPropName(name)},`);
+        lines.push(`${createIndentation(3)}${createSetPropName(name)},`);
+    });
+    lines.push(`${createIndentation(2)}};`);
+    lines.push(emptyLine);
+    lines.push(`${createIndentation(2)}return context;`);
+    return lines;
+};
 
 const createContextBuilderBuild = ({ typeDef }) => {
-    const { name, props } = typeDef;
+    const { name } = typeDef;
     const lines = createJSDocDescription(createIndentation(1), {
         description: `Builds the ${toPascalCase(name)} Context.`,
         returns: { type: `${createContextInterfaceName(name)}`, description: `The ${toPascalCase(name)} Context Interface.` }
     });
+
     lines.push(`${createIndentation(1)}build() {`);
+
+    [
+        createBuildVarDeclarations,
+        createBuildSyncStateWithLocation,
+        createBuildSyncHistoryWithState,
+        createBuildRouteComponent,
+        createBuildComponent,
+        createBuildRender,
+        createBuildProps,
+        createBuildContext
+    ]
+    .map(x => x({ typeDef }))
+    .reduce(concatWithEmptyLineButFirstReducer, [])
+    .forEach(line => lines.push(line));
+
     lines.push(`${createIndentation(1)}}`);
     return lines;
 };

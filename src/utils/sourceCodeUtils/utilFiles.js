@@ -1,7 +1,7 @@
 'use strict';
 
-const contextBuilderUtilsContent = `
-import React from 'react';
+const contextBuilderUtilsContent = 
+`import React from 'react';
 import { createHashHistory } from 'history';
 
 const createKey = () => Math.random().toString(36).substr(2, 5);
