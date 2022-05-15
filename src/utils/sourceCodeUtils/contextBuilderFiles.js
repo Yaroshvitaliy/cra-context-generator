@@ -159,12 +159,16 @@ const createBuildSyncStateWithLocation = ({ typeDef }) => {
         lines.push(`${createIndentation(3)}} = ${createStatePropName(name)};`);
         lines.push(`${createIndentation(3)}const pathname = deserializePathname(location.pathname);`);
         props.forEach(p => {
-            const { name } = p;
+            const { name, type } = p;
             const urlParamName = createUrlParamPropName(name);
+            const isParsingNeeded = type.indexOf('string') < 0;
             //todo: cast to the type of a property. Use 'JSON.parse' for bool
             lines.push(`${createIndentation(3)}const ${createPropName(name)} = ${urlParamName} && ` + 
                 `pathname[${urlParamName}] && ` + 
-                `decodeURIComponent(pathname[${urlParamName}]);`);
+                (isParsingNeeded ? 'JSON.parse(' : '') +
+                `decodeURIComponent(pathname[${urlParamName}])` + 
+                (isParsingNeeded ? ')' : '') +
+                `;`);
         });
         props.forEach(p => {
             const { name } = p;
