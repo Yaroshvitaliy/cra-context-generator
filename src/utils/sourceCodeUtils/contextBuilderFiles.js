@@ -161,7 +161,7 @@ const createBuildSyncStateWithLocation = ({ typeDef }) => {
         props.forEach(p => {
             const { name } = p;
             const urlParamName = createUrlParamPropName(name);
-            //todo: cast to the type of a property
+            //todo: cast to the type of a property. Use 'JSON.parse' for bool
             lines.push(`${createIndentation(3)}const ${createPropName(name)} = ${urlParamName} && ` + 
                 `pathname[${urlParamName}] && ` + 
                 `decodeURIComponent(pathname[${urlParamName}]);`);
