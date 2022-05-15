@@ -27,7 +27,19 @@
             "name": "SwitchButton",
             "props": [
                 { "name": "enabled", "type": "boolean", "isOptional": true, "defaultValue": false }
-            ]
+            ],
+            "contextBuilder": {
+                "imports": [
+                    "import Widget from '../components/Widget';"
+                ],
+                "props": [
+                    { "name": "container", "type": "Element | null", "isOptional": true }
+                ],
+                "childrenWrapper": {
+                    "header": "<Widget container={container}>",
+                    "footer": "</Widget>"
+                }
+            }
         }
     ]
 }

@@ -161,7 +161,10 @@ const createBuildSyncStateWithLocation = ({ typeDef }) => {
         props.forEach(p => {
             const { name } = p;
             const urlParamName = createUrlParamPropName(name);
-            lines.push(`${createIndentation(3)}const ${createPropName(name)} = ${urlParamName} && pathname[${urlParamName}] && decodeURIComponent(pathname[${urlParamName}]);`);
+            //todo: cast to the type of a property
+            lines.push(`${createIndentation(3)}const ${createPropName(name)} = ${urlParamName} && ` + 
+                `pathname[${urlParamName}] && ` + 
+                `decodeURIComponent(pathname[${urlParamName}]);`);
         });
         props.forEach(p => {
             const { name } = p;
@@ -216,7 +219,7 @@ const createBuildRouteComponent = ({ typeDef }) => {
     });
     lines.push(`${createIndentation(4)}...rest`);
     lines.push(`${createIndentation(3)}} = this.props;`);
-    lines.push(`${createIndentation(3)}React.useEffect(() => syncStateWithLocation(${statePropName}, history.location), []);`);
+    lines.push(`${createIndentation(3)}React.useEffect(() => ${syncStateWithLocationName}(${statePropName}, history.location), []);`);
     lines.push(`${createIndentation(3)}React.useEffect(() => syncHistoryWithState(${statePropName}, history), [${statePropName}, history]);`);
     lines.push(`${createIndentation(3)}this.props.${statePropName} = ${statePropName};`);
     lines.push(`${createIndentation(3)}return (`);
