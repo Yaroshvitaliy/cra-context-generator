@@ -54,7 +54,7 @@ const createStateInterface = ({ typeDef }) => {
     props.forEach(p => {
         const { name, type, isOptional } = p;
         lines.push(`${createIndentation(1)}${createProp(createStatePropName(name), type)};`);
-        lines.push(`${createIndentation(1)}${createProp(createSetStatePropName(name), `React.Dispatch<React.SetStateAction<${type}>>`, false, isOptional)};`);
+        lines.push(`${createIndentation(1)}${createProp(createSetStatePropName(name), `React.Dispatch<React.SetStateAction<${type}>>`, false, true)};`);
     });
     lines.push('}');
     return lines;
@@ -68,8 +68,8 @@ const createContextProviderPropsInterface = ({ typeDef }) => {
     lines.push(`${createIndentation(1)}${createProp('children', 'React.ReactNode')};`);
     lines.push(`${createIndentation(1)}${createProp(createStatePropName(name), createStateInterfaceName(name))};`);
     props.forEach(p => {
-        const { name, type, isOptional } = p;
-        lines.push(`${createIndentation(1)}${createProp(createSetEventHandlerPropName(name), `(${name}: ${type}) => void`, isOptional)};`);
+        const { name, type } = p;
+        lines.push(`${createIndentation(1)}${createProp(createSetEventHandlerPropName(name), `(${name}: ${type}) => void`, true)};`);
     });
     lines.push('}');
     return lines;

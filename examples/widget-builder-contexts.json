@@ -1,5 +1,10 @@
 {
     "description": "Source code generation of React's state, context, context provider and context builder for the given types.",
+    "options": {
+        "majorVersion": {
+            "react-router-dom": 6 
+        }
+    },
     "types": [
         {
             "disable": false,
@@ -7,7 +12,7 @@
             "description": "The application state properties.",
             "name": "App",
             "props": [
-                { "name": "language", "type": "string", "isOptional": true, "defaultValue": "en" },
+                { "name": "language", "type": "string", "isOptional": false, "defaultValue": "en" },
                 { "name": "theme", "type": "string", "isOptional": true, "defaultValue": "default" }
             ]
         },

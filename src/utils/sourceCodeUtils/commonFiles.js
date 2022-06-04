@@ -44,11 +44,55 @@ export const serializePathname = (pathname: any) =>
     Object.keys(pathname)
         .map(key => ` + '`' + '${key}=${pathname[key]}' + '`' + `)
         .sort()
-        .join('&');
-`;
+        .join('&');`;
+
+const createCustomRouterContent = (options) => {
+    const { majorVersion = {}} = options || {};
+    const { 'react-router-dom': reactRouterDom = 6 } = majorVersion;
+    let historyListener;
+    let routerComponent;    
+    if (reactRouterDom < 6) {
+        historyListener = 'React.useLayoutEffect(() => history.listen((location, action) => setState({ location, action })), [history]);';
+        routerComponent =  '<Router {...props} history={history} />';
+    } else {
+        historyListener = 'React.useLayoutEffect(() => history.listen(setState), [history]);';
+        routerComponent = '<Router {...props} location={state.location} navigationType={state.action} navigator={history} />';
+    }
+
+    const content =
+`
+import React from 'react';
+import { Router } from 'react-router-dom';
+import { History } from 'history'
+
+export interface ICustomRouterProps {
+    children: React.ReactNode;
+    history: History;
+}
+        
+export const CustomRouter = ({ history, ...props }: ICustomRouterProps) => {
+    const [state, setState] = React.useState({
+        action: history.action,
+        location: history.location
+    });
+    
+    ${historyListener}
+    
+    return (
+        ${routerComponent}
+    );
+};
+
+export default CustomRouter;`;
+
+    return content;
+};
 
 const contextBuilderUtilFile = { name: 'contextBuilderUtils.ts', content: contextBuilderUtilsContent };
 
+const createCustomRouterFile = (options) => ({ name: 'CustomRouter.tsx', content: createCustomRouterContent(options) });
+
 module.exports = {
-    contextBuilderUtilFile
+    contextBuilderUtilFile,
+    createCustomRouterFile
 };

@@ -1,6 +1,6 @@
 {
   "name": "cra-context-generator",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Contexts generator for create-creact-application",
   "main": "src/cli.js",
   "scripts": {
