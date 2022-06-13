@@ -34,9 +34,18 @@ const createContextBuilderName = (name) => `${toPascalCase(name)}ContextBuilder`
 const createContextBuilderFileName = (name) => `${toCamelCase(name)}ContextBuilder.tsx`;
 const syncStateWithLocationName = 'syncStateWithLocation';
 
-const createContextBuilderHeader = ({ sourceCodeGeneratorInfo, typeDef }) => {
+const getReactRouterDomVersion = (options) => {
+    const { majorVersion = {} } = options;
+    const { 'react-router-dom': reactRouterDomVersion = 6 } = majorVersion;
+    return reactRouterDomVersion;
+};
+
+const createContextBuilderHeader = ({ options, sourceCodeGeneratorInfo, typeDef }) => {
     const { name, contextBuilder = {} } = typeDef;
     const { imports: contextBuilderImports = [] } = contextBuilder
+
+    const reactRouterDomVersion = getReactRouterDomVersion(options);
+    const reactDOMImport = reactRouterDomVersion <= 5 ? `import ReactDOM from 'react-dom';` : `import ReactDOM from 'react-dom/client';`;
 
     const contextImports = [
         createContextProviderName,
@@ -52,10 +61,8 @@ const createContextBuilderHeader = ({ sourceCodeGeneratorInfo, typeDef }) => {
 
     const imports = [
         `import React from 'react';`,
-        `import ReactDOM from 'react-dom';`,
-        `import { Route } from 'react-router-dom';`,
+        `${reactDOMImport}`,
         `import { History, Location } from 'history';`,
-        `import { CustomRouter } from './CustomRouter';`,
         `import { ${contextImports} } from './${contextFileName}';`,
         `import { createChildren, getHistory, deserializePathname, serializePathname } from './${contextBuilderUtilsFileName}';`
     ]
@@ -216,12 +223,12 @@ const createBuildSyncLocationWithState = ({ typeDef }) => {
     return lines;
 };
 
-const createBuildRouteComponent = ({ typeDef }) => {
+const createBuildComponent = ({ typeDef }) => {
     const { name, props, contextBuilder = {} } = typeDef;
     const { props: contextBuilderProps = [], contextProviderContent = ['{children}'] } = contextBuilder;
     const statePropName = createStatePropName(name);
     const lines = [];
-    lines.push(`${createIndentation(2)}const RouteComponent = () => {`);
+    lines.push(`${createIndentation(2)}const Component = () => {`);
     lines.push(`${createIndentation(3)}const history = getHistory();`);
     lines.push(`${createIndentation(3)}const ${statePropName} = ${createStateName(name)}({`);
     props.forEach(p => {
@@ -254,27 +261,29 @@ const createBuildRouteComponent = ({ typeDef }) => {
     return lines;
 };
 
-const createBuildComponent = ({ typeDef }) => {
+const createBuildRender = ({ options, typeDef }) => {
     const lines = [];
-    lines.push(`${createIndentation(2)}const Component = () => (`);
-    lines.push(`${createIndentation(3)}<CustomRouter history={getHistory()}>`);
-    lines.push(`${createIndentation(4)}<Route>`);
-    lines.push(`${createIndentation(5)}<RouteComponent />`);
-    lines.push(`${createIndentation(4)}</Route>`);
-    lines.push(`${createIndentation(3)}</CustomRouter>`);
-    lines.push(`${createIndentation(2)});`);
-    return lines;
-};
+    const reactRouterDomVersion = getReactRouterDomVersion(options);
+    
+    if (reactRouterDomVersion <= 5) {
+        lines.push(`${createIndentation(2)}const render = (container: Element | DocumentFragment | null) =>`);
+        lines.push(`${createIndentation(3)}ReactDOM.render(`);
+        lines.push(`${createIndentation(4)}<React.StrictMode>`);
+        lines.push(`${createIndentation(5)}<Component />`);
+        lines.push(`${createIndentation(4)}</React.StrictMode>,`);
+        lines.push(`${createIndentation(4)}container || document.createElement('div')`);
+        lines.push(`${createIndentation(3)});`);
+    } else {
+        lines.push(`${createIndentation(2)}const render = (container: Element | DocumentFragment | null) =>`);
+        lines.push(`${createIndentation(3)}ReactDOM`);
+        lines.push(`${createIndentation(4)}.createRoot((container || document.createElement('div')) as HTMLElement)`);
+        lines.push(`${createIndentation(4)}.render(`);
+        lines.push(`${createIndentation(5)}<React.StrictMode>`);
+        lines.push(`${createIndentation(6)}<Component />`);
+        lines.push(`${createIndentation(5)}</React.StrictMode>`);
+        lines.push(`${createIndentation(4)});`);
+    }
 
-const createBuildRender = ({ typeDef }) => {
-    const lines = [];
-    lines.push(`${createIndentation(2)}const render = (container: Element | DocumentFragment | null) =>`);
-    lines.push(`${createIndentation(3)}ReactDOM.render(`);
-    lines.push(`${createIndentation(4)}<React.StrictMode>`);
-    lines.push(`${createIndentation(5)}<Component />`);
-    lines.push(`${createIndentation(4)}</React.StrictMode>,`);
-    lines.push(`${createIndentation(4)}container || document.createElement('div')`);
-    lines.push(`${createIndentation(3)});`);
     return lines;
 };
 
@@ -332,7 +341,7 @@ const createBuildContext = ({ typeDef }) => {
     return lines;
 };
 
-const createContextBuilderBuild = ({ typeDef }) => {
+const createContextBuilderBuild = ({ options, typeDef }) => {
     const { name } = typeDef;
     const lines = createJSDocDescription(createIndentation(1), {
         description: `Builds the ${toPascalCase(name)} Context.`,
@@ -345,13 +354,12 @@ const createContextBuilderBuild = ({ typeDef }) => {
         createBuildVarDeclarations,
         createBuildSyncStateWithLocation,
         createBuildSyncLocationWithState,
-        createBuildRouteComponent,
         createBuildComponent,
         createBuildRender,
         createBuildProps,
         createBuildContext
     ]
-    .map(x => x({ typeDef }))
+    .map(x => x({ options, typeDef }))
     .reduce(concatWithEmptyLineButFirstReducer, [])
     .forEach(line => lines.push(line));
 
@@ -430,7 +438,7 @@ const createContextBuilderWithProperties = ({ typeDef }) => {
     return lines;
 };
 
-const createContextBuilder = ({ typeDef }) => {
+const createContextBuilder = ({ options, typeDef }) => {
     const { name } = typeDef;
     const lines = createJSDocDescription(createIndentation(0), {
         description: [
@@ -446,7 +454,7 @@ const createContextBuilder = ({ typeDef }) => {
         createContextBuilderBuild,
         createContextBuilderWithProperties
     ]
-    .map(x => x({ typeDef }))
+    .map(x => x({ options, typeDef }))
     .reduce(concatWithEmptyLineButFirstReducer, [])
     .forEach(line => lines.push(line));
 
@@ -458,14 +466,14 @@ const createContextBuilder = ({ typeDef }) => {
     return lines;
 };
 
-const createContextBuilderFileContent = (typeDef, sourceCodeGeneratorInfo) => {
+const createContextBuilderFileContent = (options, typeDef, sourceCodeGeneratorInfo) => {
     const lines = [
         createContextBuilderHeader,
         createContextInterface,
         createComponentPropsInterface,
         createContextBuilder
     ]
-    .map(x => x({ sourceCodeGeneratorInfo, typeDef }))
+    .map(x => x({ options, sourceCodeGeneratorInfo, typeDef }))
     .reduce(concatWithEmptyLineReducer, []);
 
     const content = lines.join(newLine);
@@ -474,13 +482,13 @@ const createContextBuilderFileContent = (typeDef, sourceCodeGeneratorInfo) => {
 
 const createContextBuilderFiles = (result, sourceCodeGeneratorInfo) => {
     const { srcData } = getResultData(result);
-    const { types } = srcData;
+    const { options = {}, types } = srcData;
 
     const files = types
         .filter(t => !t.disableContextBuilder)
         .map(t => {
             const { name } = t;
-            const content = createContextBuilderFileContent(t, sourceCodeGeneratorInfo);
+            const content = createContextBuilderFileContent(options, t, sourceCodeGeneratorInfo);
             const file = { name: createContextBuilderFileName(name), content };
             return file;
         });
