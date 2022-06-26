@@ -32,9 +32,18 @@ const createHeader = (sourceCodeGeneratorInfo, imports) => {
 };
 
 const createValue = (value, type) => {
+    if (typeof value === 'undefined') {
+        return value;
+    }
+
     if (type === 'string') {
         return `'${value}'`;
     }
+
+    if (type === 'object') {
+        return JSON.stringify(value);
+    }
+
     return value;
 };
 
