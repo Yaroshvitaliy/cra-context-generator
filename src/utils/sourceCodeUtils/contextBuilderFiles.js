@@ -41,7 +41,7 @@ const getReactRouterDomVersion = (options) => {
 };
 
 const createContextBuilderHeader = ({ options, sourceCodeGeneratorInfo, typeDef }) => {
-    const { name, contextBuilder = {} } = typeDef;
+    const { name, props, contextBuilder = {} } = typeDef;
     const { imports: contextBuilderImports = [] } = contextBuilder
 
     const reactRouterDomVersion = getReactRouterDomVersion(options);
@@ -58,14 +58,23 @@ const createContextBuilderHeader = ({ options, sourceCodeGeneratorInfo, typeDef 
 
     const contextFileName = path.parse(createContextFileName(name)).name;
     const contextBuilderUtilsFileName = path.parse(contextBuilderUtilFile.name).name;
+    const shouldUpdateLocation = props.some(p => p.shouldUpdateLocation);
 
-    const imports = [
-        `import React from 'react';`,
-        `${reactDOMImport}`,
-        `import { History, Location } from 'history';`,
-        `import { ${contextImports} } from './${contextFileName}';`,
-        `import { createChildren, getHistory, deserializePathname, serializePathname } from './${contextBuilderUtilsFileName}';`
-    ]
+    const imports = 
+    (shouldUpdateLocation
+        ? [
+            `import React from 'react';`,
+            `${reactDOMImport}`,
+            `import { History, Location } from 'history';`,
+            `import { ${contextImports} } from './${contextFileName}';`,
+            `import { createChildren, getHistory, deserializePathname, serializePathname } from './${contextBuilderUtilsFileName}';`
+          ]
+        : [
+            `import React from 'react';`,
+            `${reactDOMImport}`,
+            `import { ${contextImports} } from './${contextFileName}';`,
+            `import { createChildren, getHistory } from './${contextBuilderUtilsFileName}';`           
+          ])
     .concat(contextBuilderImports);
 
     const header = createHeader(sourceCodeGeneratorInfo, imports);
@@ -93,19 +102,19 @@ const createContextInterface = ({ typeDef }) => {
 
     lines.push(`${createIndentation(1)}${createProp('render', '(container: Element | DocumentFragment | null) => void')};`);
     props.forEach(p => {
-        const { name, type } = p;
+        const { name, type, isOptional} = p;
         lines.push(emptyLine);
 
         createJSDocDescription(createIndentation(1), { description: `Gets the ${createPropName(name)}.` })
         .forEach(line => lines.push(line));
 
-        lines.push(`${createIndentation(1)}${createProp(createGetPropName(name), `() => ${type}`)};`);
+        lines.push(`${createIndentation(1)}${createProp(createGetPropName(name), `() => ${type}`)}${isOptional ? ' | undefined' : ''};`);
         lines.push(emptyLine);
         
         createJSDocDescription(createIndentation(1), { description: `Sets the ${createPropName(name)}.` })
         .forEach(line => lines.push(line));
 
-        lines.push(`${createIndentation(1)}${createProp(createSetPropName(name), `(${createPropName(name)}: ${type}) => void;`)}`);
+        lines.push(`${createIndentation(1)}${createProp(createSetPropName(name), `(${createPropName(name)}${isOptional ? '?' : ''}: ${type}) => void;`)}`);
     });
     lines.push('}');
     return lines;
@@ -119,10 +128,12 @@ const createComponentPropsInterface = ({ typeDef }) => {
     lines.push(`${createIndentation(1)}${createProp('children', 'React.ReactNode')};`);
     lines.push(`${createIndentation(1)}${createProp(createStatePropName(name), createStateInterfaceName(name))};`);
     props.forEach(p => {
-        const { name, type, isOptional } = p;
+        const { name, type, isOptional, shouldUpdateLocation } = p;
         lines.push(`${createIndentation(1)}${createProp(createPropName(name), `${type}`, isOptional)};`);
-        lines.push(`${createIndentation(1)}${createProp(createUrlParamPropName(name), 'string', true)};`);
-        lines.push(`${createIndentation(1)}${createProp(createSetEventHandlerPropName(name), `(${name}: ${type}) => void`, true)};`);
+        lines.push(`${createIndentation(1)}${createProp(createSetEventHandlerPropName(name), `(${name}${isOptional ? '?' : ''}: ${type}) => void`, true)};`);
+        if (shouldUpdateLocation) {
+            lines.push(`${createIndentation(1)}${createProp(createUrlParamPropName(name), 'string', true)};`);
+        }
     });
     contextBuilderProps.forEach(p => {
         const { name, type, isOptional } = p;
@@ -141,10 +152,12 @@ const createContextBuilderPropsVariable = ({ typeDef }) => {
     lines.push(`${createIndentation(2)}${createProp('children', 'undefined')},`);
     lines.push(`${createIndentation(2)}${createProp(createStatePropName(name), defaultStateName)},`);
     props.forEach(p => {
-        const { name } = p;
+        const { name, shouldUpdateLocation } = p;
         lines.push(`${createIndentation(2)}${createProp(createPropName(name), `${defaultStateName}.${createStatePropName(name)}`)},`);
         lines.push(`${createIndentation(2)}${createProp(createSetEventHandlerPropName(name), 'undefined')},`);
-        lines.push(`${createIndentation(2)}${createProp(createUrlParamPropName(name), 'undefined')},`);
+        if (shouldUpdateLocation) {
+            lines.push(`${createIndentation(2)}${createProp(createUrlParamPropName(name), 'undefined')},`);
+        }
     });
     contextBuilderProps.forEach(p => {
         const { name, defaultValue = 'undefined' } = p;
@@ -159,9 +172,11 @@ const createBuildVarDeclarations = ({ typeDef }) => {
     const lines = [];
     lines.push(`${createIndentation(2)}const {`);
     props.forEach(p => {
-        const { name } = p;
+        const { name, shouldUpdateLocation } = p;
         lines.push(`${createIndentation(3)}${createProp(createPropName(name), createInitialPropName(name))},`);
-        lines.push(`${createIndentation(3)}${createUrlParamPropName(name)},`);
+        if (shouldUpdateLocation) {
+            lines.push(`${createIndentation(3)}${createUrlParamPropName(name)},`);
+        }
     });
     lines.push(`${createIndentation(2)}} = this.props;`);
     return lines;
@@ -175,26 +190,34 @@ const createBuildSyncStateWithLocation = ({ typeDef }) => {
         `location: Location) => {`);
         lines.push(`${createIndentation(3)}const {`);
         props.forEach(p => {
-            const { name } = p;
-            lines.push(`${createIndentation(4)}${createSetStatePropName(name)},`);
+            const { name, shouldUpdateLocation } = p;
+            if (shouldUpdateLocation) {
+                lines.push(`${createIndentation(4)}${createSetStatePropName(name)},`);
+            }
         });
         lines.push(`${createIndentation(3)}} = ${createStatePropName(name)};`);
         lines.push(`${createIndentation(3)}const pathname = deserializePathname(location.pathname);`);
         props.forEach(p => {
-            const { name, type } = p;
-            const urlParamName = createUrlParamPropName(name);
-            const isParsingNeeded = type.indexOf('string') < 0;
-            lines.push(`${createIndentation(3)}const ${createPropName(name)} = ${urlParamName} && ` + 
-                `pathname[${urlParamName}] && ` + 
-                (isParsingNeeded ? 'JSON.parse(' : '') +
-                `decodeURIComponent(pathname[${urlParamName}])` + 
-                (isParsingNeeded ? ')' : '') +
-                `;`);
+            const { name, type, shouldUpdateLocation } = p;
+
+            if (shouldUpdateLocation) {
+                const urlParamName = createUrlParamPropName(name);
+                const isParsingNeeded = type.indexOf('string') < 0;
+                lines.push(`${createIndentation(3)}const ${createPropName(name)} = ${urlParamName} && ` + 
+                    `pathname[${urlParamName}] && ` + 
+                    (isParsingNeeded ? 'JSON.parse(' : '') +
+                    `decodeURIComponent(pathname[${urlParamName}])` + 
+                    (isParsingNeeded ? ')' : '') +
+                    `;`);
+            }
         });
         props.forEach(p => {
-            const { name } = p;
-            const setStateName = createSetStatePropName(name);
-            lines.push(`${createIndentation(3)}${createPropName(name)} && ${setStateName} && ${setStateName}(${createPropName(name)});`);
+            const { name, shouldUpdateLocation } = p;
+
+            if (shouldUpdateLocation) {
+                const setStateName = createSetStatePropName(name);
+                lines.push(`${createIndentation(3)}${createPropName(name)} && ${setStateName} && ${setStateName}(${createPropName(name)});`);
+            }
         });
     lines.push(`${createIndentation(2)}};`);
     return lines;
@@ -207,15 +230,19 @@ const createBuildSyncLocationWithState = ({ typeDef }) => {
         `history: History) => {`);
     lines.push(`${createIndentation(3)}const {`);
     props.forEach(p => {
-        const { name } = p;
-        lines.push(`${createIndentation(4)}${createStatePropName(name)},`);
+        const { name, shouldUpdateLocation } = p;
+        if (shouldUpdateLocation) {
+            lines.push(`${createIndentation(4)}${createStatePropName(name)},`);
+        }
     });
     lines.push(`${createIndentation(3)}} = ${createStatePropName(name)};`);
     lines.push(`${createIndentation(3)}const pathname = deserializePathname(history.location.pathname);`);
     props.forEach(p => {
-        const { name } = p;
-        const urlParamName = createUrlParamPropName(name);
-        lines.push(`${createIndentation(3)}${urlParamName} && (pathname[${urlParamName}] = encodeURIComponent(${createStatePropName(name)}));`);
+        const { name, shouldUpdateLocation } = p;
+        if (shouldUpdateLocation) {
+            const urlParamName = createUrlParamPropName(name);
+            lines.push(`${createIndentation(3)}${urlParamName} && (pathname[${urlParamName}] = ${createStatePropName(name)} && encodeURIComponent(${createStatePropName(name)}));`);
+        }
     });
     lines.push(`${createIndentation(3)}const serializedPathname = serializePathname(pathname);`);
     lines.push(`${createIndentation(3)}history.replace({ pathname: serializedPathname});`);
@@ -227,9 +254,12 @@ const createBuildComponent = ({ typeDef }) => {
     const { name, props, contextBuilder = {} } = typeDef;
     const { props: contextBuilderProps = [], contextProviderContent = ['{children}'] } = contextBuilder;
     const statePropName = createStatePropName(name);
+    const shouldUpdateLocation = props.some(p => p.shouldUpdateLocation);
     const lines = [];
     lines.push(`${createIndentation(2)}const Component = () => {`);
-    lines.push(`${createIndentation(3)}const history = getHistory();`);
+    if (shouldUpdateLocation) {
+        lines.push(`${createIndentation(3)}const history = getHistory();`);
+    }
     lines.push(`${createIndentation(3)}const ${statePropName} = ${createStateName(name)}({`);
     props.forEach(p => {
         const { name } = p;
@@ -239,9 +269,11 @@ const createBuildComponent = ({ typeDef }) => {
     lines.push(`${createIndentation(3)}const {`);
     lines.push(`${createIndentation(4)}children,`);
     props.forEach(p => {
-        const { name } = p;
+        const { name, shouldUpdateLocation } = p;
         lines.push(`${createIndentation(4)}${createPropName(name)},`);
-        lines.push(`${createIndentation(4)}${createUrlParamPropName(name)},`);
+        if (shouldUpdateLocation) {
+            lines.push(`${createIndentation(4)}${createUrlParamPropName(name)},`);
+        }
     });
     contextBuilderProps.forEach(p => {
         const { name } = p;
@@ -249,8 +281,10 @@ const createBuildComponent = ({ typeDef }) => {
     });
     lines.push(`${createIndentation(4)}...rest`);
     lines.push(`${createIndentation(3)}} = this.props;`);
-    lines.push(`${createIndentation(3)}React.useEffect(() => ${syncStateWithLocationName}(${statePropName}, history.location), []);`);
-    lines.push(`${createIndentation(3)}React.useEffect(() => syncLocationWithState(${statePropName}, history), [${statePropName}, history]);`);
+    if (shouldUpdateLocation) {
+        lines.push(`${createIndentation(3)}React.useEffect(() => ${syncStateWithLocationName}(${statePropName}, history.location), []);`);
+        lines.push(`${createIndentation(3)}React.useEffect(() => syncLocationWithState(${statePropName}, history), [${statePropName}, history]);`);
+    }
     lines.push(`${createIndentation(3)}this.props.${statePropName} = ${statePropName};`);
     lines.push(`${createIndentation(3)}return (`);
     lines.push(`${createIndentation(4)}<${createContextProviderName(name)} {...rest} ${statePropName}={${statePropName}}>`);
@@ -300,9 +334,9 @@ const createBuildPropGetter = ({ typeDef, prop }) => {
 
 const createBuildPropSetter = ({ typeDef, prop }) => {
     const { name: typeName } = typeDef;
-    const { name: propName, type: propType } = prop;
+    const { name: propName, type: propType, isOptional } = prop;
     const lines = [];
-    lines.push(`${createIndentation(2)}const ${createSetPropName(propName)} = (${createPropName(propName)}: ${propType}) => {`);
+    lines.push(`${createIndentation(2)}const ${createSetPropName(propName)} = (${createPropName(propName)}${isOptional ? '?' : ''}: ${propType}) => {`);
     lines.push(`${createIndentation(3)}const { ${createSetStatePropName(propName)} } = this.props.${createStatePropName(typeName)} || {};`);
     lines.push(`${createIndentation(3)}${createSetStatePropName(propName)} && ${createSetStatePropName(propName)}(${createPropName(propName)});`);
     lines.push(`${createIndentation(2)}};`);
@@ -342,7 +376,8 @@ const createBuildContext = ({ typeDef }) => {
 };
 
 const createContextBuilderBuild = ({ options, typeDef }) => {
-    const { name } = typeDef;
+    const { name, props } = typeDef;
+    const shouldUpdateLocation = props.some(p => p.shouldUpdateLocation);
     const lines = createJSDocDescription(createIndentation(1), {
         description: `Builds the ${toPascalCase(name)} Context.`,
         returns: { type: `${createContextInterfaceName(name)}`, description: `The ${toPascalCase(name)} Context Interface.` }
@@ -350,15 +385,22 @@ const createContextBuilderBuild = ({ options, typeDef }) => {
 
     lines.push(`${createIndentation(1)}build() {`);
 
+    const functions =
     [
-        createBuildVarDeclarations,
-        createBuildSyncStateWithLocation,
-        createBuildSyncLocationWithState,
-        createBuildComponent,
-        createBuildRender,
-        createBuildProps,
-        createBuildContext
-    ]
+        createBuildVarDeclarations
+    ];
+
+    if (shouldUpdateLocation) {
+        functions.push(createBuildSyncStateWithLocation);
+        functions.push(createBuildSyncLocationWithState);
+    }
+
+    functions.push(createBuildComponent);
+    functions.push(createBuildRender);
+    functions.push(createBuildProps);
+    functions.push(createBuildContext);
+
+    functions
     .map(x => x({ options, typeDef }))
     .reduce(concatWithEmptyLineButFirstReducer, [])
     .forEach(line => lines.push(line));
@@ -403,12 +445,17 @@ const createContextBuilderWithProperties = ({ typeDef }) => {
     .forEach(line => lines.push(line));
 
     props.map(p => {
-        const { name, type, defaultValue } = p;
-        return [
+        const { name, type, defaultValue, shouldUpdateLocation, isOptional } = p;
+        const properties = [
             { ...p, description: `. Default value: ${createValue(defaultValue, type)}` },
-            { name: createUrlParamPropName(name), type: 'string', description: ` to be synchronized with the ${createPropName(name)} state` },
-            { name: createSetEventHandlerPropName(name), type: `(${createPropName(name)}: ${type}) => void` }
+            { name: createSetEventHandlerPropName(name), type: `(${createPropName(name)}${isOptional ? '?' : ''}: ${type}) => void` }
         ];
+
+        if (shouldUpdateLocation) {
+            properties.push({ name: createUrlParamPropName(name), type: 'string', description: ` to be synchronized with the ${createPropName(name)} state` });
+        }
+
+        return properties;
     })
     .concat(
         contextBuilderProps.map(p => {

@@ -53,8 +53,8 @@ const createStateInterface = ({ typeDef }) => {
     lines.push(`export interface ${interfaceName} {`);
     props.forEach(p => {
         const { name, type, isOptional } = p;
-        lines.push(`${createIndentation(1)}${createProp(createStatePropName(name), type)};`);
-        lines.push(`${createIndentation(1)}${createProp(createSetStatePropName(name), `React.Dispatch<React.SetStateAction<${type}>>`, false, true)};`);
+        lines.push(`${createIndentation(1)}${createProp(createStatePropName(name), type, isOptional)};`);
+        lines.push(`${createIndentation(1)}${createProp(createSetStatePropName(name), `React.Dispatch<React.SetStateAction<${type}${isOptional ? ' | undefined' : ''}>>`, true)};`);
     });
     lines.push('}');
     return lines;
@@ -68,8 +68,8 @@ const createContextProviderPropsInterface = ({ typeDef }) => {
     lines.push(`${createIndentation(1)}${createProp('children', 'React.ReactNode')};`);
     lines.push(`${createIndentation(1)}${createProp(createStatePropName(name), createStateInterfaceName(name))};`);
     props.forEach(p => {
-        const { name, type } = p;
-        lines.push(`${createIndentation(1)}${createProp(createSetEventHandlerPropName(name), `(${name}: ${type}) => void`, true)};`);
+        const { name, type, isOptional } = p;
+        lines.push(`${createIndentation(1)}${createProp(createSetEventHandlerPropName(name), `(${name}${isOptional ? '?' : ''}: ${type}) => void`, true)};`);
     });
     lines.push('}');
     return lines;
@@ -81,9 +81,9 @@ const createContextValueInterface = ({ typeDef }) => {
     const interfaceName = createContextValueInterfaceName(name);
     lines.push(`export interface ${interfaceName} {`);
     props.forEach(p => {
-        const { name, type } = p;
-        lines.push(`${createIndentation(1)}${createProp(createPropName(name), type)};`);
-        lines.push(`${createIndentation(1)}${createProp(createSetPropName(name), `(${name}: ${type}) => void;`)}`);
+        const { name, type, isOptional } = p;
+        lines.push(`${createIndentation(1)}${createProp(createPropName(name), type, isOptional)};`);
+        lines.push(`${createIndentation(1)}${createProp(createSetPropName(name), `(${name}${isOptional ? '?' : ''}: ${type}) => void;`)}`);
     });
     lines.push('}');
     return lines;
@@ -120,9 +120,9 @@ const createDefaultContextValue = ({ typeDef }) => {
     const typeName = createDefaultContextValueName(name);
     lines.push(`export const ${typeName}: ${interfaceName} = {`);
     props.forEach(p => {
-        const { name, type } = p;
+        const { name, type, isOptional } = p;
         lines.push(`${createIndentation(1)}${createProp(createPropName(name), createDefaultValueName(name))},`);
-        lines.push(`${createIndentation(1)}${createProp(createSetPropName(name), `(${name}: ${type}) => {},`)}`);
+        lines.push(`${createIndentation(1)}${createProp(createSetPropName(name), `(${name}${isOptional ? '?' : ''}: ${type}) => {},`)}`);
     });
     lines.push('};');
     return lines;
@@ -141,8 +141,8 @@ const createState = ({ typeDef }) => {
     lines.push(`${createIndentation(2)}}: ${interfaceName}) => {`);
     lines.push(emptyLine);
     props.forEach(p => {
-        const { name, type } = p;
-        lines.push(`${createIndentation(1)}const [ ${createStatePropName(name)}, ${createSetStatePropName(name)} ] = React.useState<${type}>(${createPropName(name)} || ${createDefaultValueName(name)});`);
+        const { name, type, isOptional } = p;
+        lines.push(`${createIndentation(1)}const [ ${createStatePropName(name)}, ${createSetStatePropName(name)} ] = React.useState<${type}${isOptional ? ' | undefined' : ''}>(${createPropName(name)} || ${createDefaultValueName(name)});`);
     });
     lines.push(emptyLine);
     lines.push(`${createIndentation(1)}const ${createStatePropName(name)}: ${createStateInterfaceName(name)} = {`);
@@ -198,9 +198,9 @@ const createContextProvider = ({ typeDef }) => {
     });
     lines.push(`${createIndentation(1)}const contextValue: ${createContextValueInterfaceName(name)} = {`);
     props.forEach(p => {
-        const { name, type } = p;
+        const { name, type, isOptional } = p;
         lines.push(`${createIndentation(2)}${createProp(createPropName(name), createStatePropName(name))},`);
-        lines.push(`${createIndentation(2)}${createProp(createSetPropName(name), `(${name}: ${type}) => ${createSetStatePropName(name)} && ${createSetStatePropName(name)}(${createPropName(name)}),`)}`);
+        lines.push(`${createIndentation(2)}${createProp(createSetPropName(name), `(${name}${isOptional ? '?' : ''}: ${type}) => ${createSetStatePropName(name)} && ${createSetStatePropName(name)}(${createPropName(name)}),`)}`);
     });
     lines.push(`${createIndentation(1)}};`);
     lines.push(emptyLine);
