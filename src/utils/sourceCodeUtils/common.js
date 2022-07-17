@@ -40,7 +40,7 @@ const createValue = (value, type) => {
         return `'${value}'`;
     }
 
-    if (type === 'object') {
+    if (type === 'object' || Array.isArray(value)) {
         return JSON.stringify(value);
     }
 
