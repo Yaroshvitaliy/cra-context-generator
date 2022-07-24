@@ -1,0 +1,30 @@
+{
+    "description": "Source code generation of React's state, context, context provider and context builder for the given types.",
+    "options": {
+        "majorVersion": {
+            "react-router-dom": 6 
+        }
+    },
+    "types": [
+        {
+            "disable": false,
+            "disableContextBuilder": true,
+            "forceExternalStateGeneration": false,
+            "description": "The dashboard state properties.",
+            "name": "Dashboard",
+            "props": [
+                { "name": "injections", "type": "any[]", "isOptional": false, "defaultValue": [], "shouldUpdateLocation": false }
+            ]
+        },
+        {
+            "disable": false,
+            "disableContextBuilder": true,
+            "forceExternalStateGeneration": false,
+            "description": "The user state properties.",
+            "name": "User",
+            "props": [
+                { "name": "currentUser", "type": "any", "isOptional": true, "defaultValue": null, "shouldUpdateLocation": false }
+            ]
+        }
+    ]
+}

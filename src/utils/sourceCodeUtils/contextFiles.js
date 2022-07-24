@@ -20,6 +20,12 @@ const {
     concatWithEmptyLineReducer
 } = require('./common');
 
+const stateShouldBeIncapsulated = (typeDef) => {
+    const { disableContextBuilder, forceExternalStateGeneration } = typeDef;
+    const shouldIncapsulateState = disableContextBuilder && !forceExternalStateGeneration;
+    return shouldIncapsulateState;
+};
+
 const createStatePropsInterfaceName = (name) => `I${toPascalCase(name)}StateProps`;
 const createContextProviderPropsInterfaceName = (name) => `I${toPascalCase(name)}ContextProviderProps`;
 const createContextValueInterfaceName = (name) => `I${toPascalCase(name)}ContextValue`;
@@ -62,15 +68,18 @@ const createStateInterface = ({ typeDef }) => {
 
 const createContextProviderPropsInterface = ({ typeDef }) => {
     const { name, props } = typeDef;
+    const shouldIncapsulateState = stateShouldBeIncapsulated(typeDef);
     const lines = createJSDocDescription(createIndentation(0), { description: `The ${toPascalCase(name)} context provider props interface.` });
     const interfaceName = createContextProviderPropsInterfaceName(name);
     lines.push(`export interface ${interfaceName} {`);
     lines.push(`${createIndentation(1)}${createProp('children', 'React.ReactNode')};`);
-    lines.push(`${createIndentation(1)}${createProp(createStatePropName(name), createStateInterfaceName(name))};`);
-    props.forEach(p => {
-        const { name, type, isOptional } = p;
-        lines.push(`${createIndentation(1)}${createProp(createSetEventHandlerPropName(name), `(${name}${isOptional ? '?' : ''}: ${type}) => void`, true)};`);
-    });
+    if (!shouldIncapsulateState) {
+        lines.push(`${createIndentation(1)}${createProp(createStatePropName(name), createStateInterfaceName(name))};`);
+        props.forEach(p => {
+            const { name, type, isOptional } = p;
+            lines.push(`${createIndentation(1)}${createProp(createSetEventHandlerPropName(name), `(${name}${isOptional ? '?' : ''}: ${type}) => void`, true)};`);
+        });
+    }
     lines.push('}');
     return lines;
 };
@@ -160,47 +169,71 @@ const createState = ({ typeDef }) => {
 
 const createContext = ({ typeDef }) => {
     const { name } = typeDef;
-    const lines = createJSDocDescription(createIndentation(0), { description: `The ${toPascalCase(name)} context.` });
+    const defaultValueName = createDefaultContextValueName(name);
+    const lines = createJSDocDescription(createIndentation(0), { 
+        description: [
+            `The ${toPascalCase(name)} context.`,
+            `The ${defaultValueName} argument is only used when a component does not have a matching Provider above it in the tree.`,
+            `This can be helpful for testing components.` 
+        ]
+    });
     const interfaceName = createContextValueInterfaceName(name);
     const typeName = createContextName(name);
-    const defaultValueName = createDefaultContextValueName(name);
     lines.push(`export const ${typeName} = React.createContext<${interfaceName}>(${defaultValueName});`);
     return lines;
 };
 
 const createContextProvider = ({ typeDef }) => {
     const { name, props } = typeDef;
+    const shouldIncapsulateState = stateShouldBeIncapsulated(typeDef);
     const lines = createJSDocDescription(createIndentation(0), { description: `The ${toPascalCase(name)} context provider.` });
     const typeName = createContextProviderName(name);
     lines.push(`export const ${typeName} = ({`);
     lines.push(`${createIndentation(3)}children,`);
-    lines.push(`${createIndentation(3)}${createStatePropName(name)},`);
-    props.forEach(p => {
-        const { name } = p;
-        lines.push(`${createIndentation(3)}${createSetEventHandlerPropName(name)},`);
-    });
+
+    if (!shouldIncapsulateState) {
+        lines.push(`${createIndentation(3)}${createStatePropName(name)},`);
+        props.forEach(p => {
+            const { name } = p;
+            lines.push(`${createIndentation(3)}${createSetEventHandlerPropName(name)},`);
+        });
+    }
+
     lines.push(`${createIndentation(2)}}: ${createContextProviderPropsInterfaceName(name)}) => {`);
     lines.push(emptyLine);
-    lines.push(`${createIndentation(1)}const {`);
-    props.forEach(p => {
-        const { name } = p;
-        lines.push(`${createIndentation(2)}${createStatePropName(name)},`);
-        lines.push(`${createIndentation(2)}${createSetStatePropName(name)},`);
-    });
-    lines.push(`${createIndentation(1)}} = ${createStatePropName(name)} || {};`);
-    lines.push(emptyLine);
-    props.forEach(p => {
-        const { name } = p;
-        lines.push(`${createIndentation(1)}React.useEffect(() => {`);
-        lines.push(`${createIndentation(2)}${createSetEventHandlerPropName(name)} && ${createSetEventHandlerPropName(name)}(${createStatePropName(name)});`);
-        lines.push(`${createIndentation(1)}}, [ ${createStatePropName(name)}, ${createSetStatePropName(name)}, ${createSetEventHandlerPropName(name)} ]);`);
+
+    if (!shouldIncapsulateState) {
+        lines.push(`${createIndentation(1)}const {`);
+        props.forEach(p => {
+            const { name } = p;
+            lines.push(`${createIndentation(2)}${createStatePropName(name)},`);
+            lines.push(`${createIndentation(2)}${createSetStatePropName(name)},`);
+        });
+        lines.push(`${createIndentation(1)}} = ${createStatePropName(name)} || {};`);
         lines.push(emptyLine);
-    });
+        props.forEach(p => {
+            const { name } = p;
+            lines.push(`${createIndentation(1)}React.useEffect(() => {`);
+            lines.push(`${createIndentation(2)}${createSetEventHandlerPropName(name)} && ${createSetEventHandlerPropName(name)}(${createStatePropName(name)});`);
+            lines.push(`${createIndentation(1)}}, [ ${createStatePropName(name)}, ${createSetStatePropName(name)}, ${createSetEventHandlerPropName(name)} ]);`);
+            lines.push(emptyLine);
+        });
+    } else {
+        props.forEach(p => {
+            const { name, type, isOptional } = p;
+            lines.push(`${createIndentation(1)}const [ ${createStatePropName(name)}, ${createSetStatePropName(name)} ] = React.useState<${type}>(${createDefaultValueName(name)});`);
+        });
+    }
+
     lines.push(`${createIndentation(1)}const contextValue: ${createContextValueInterfaceName(name)} = {`);
     props.forEach(p => {
         const { name, type, isOptional } = p;
+        const propSetter = shouldIncapsulateState
+            ? `(${name}${isOptional ? '?' : ''}: ${type}) => ${createSetStatePropName(name)}(${createPropName(name)}),`
+            : `(${name}${isOptional ? '?' : ''}: ${type}) => ${createSetStatePropName(name)} && ${createSetStatePropName(name)}(${createPropName(name)}),`;
+            
         lines.push(`${createIndentation(2)}${createProp(createPropName(name), createStatePropName(name))},`);
-        lines.push(`${createIndentation(2)}${createProp(createSetPropName(name), `(${name}${isOptional ? '?' : ''}: ${type}) => ${createSetStatePropName(name)} && ${createSetStatePropName(name)}(${createPropName(name)}),`)}`);
+        lines.push(`${createIndentation(2)}${createProp(createSetPropName(name), propSetter)}`);
     });
     lines.push(`${createIndentation(1)}};`);
     lines.push(emptyLine);
@@ -214,19 +247,23 @@ const createContextProvider = ({ typeDef }) => {
 };
 
 const createContextFileContent = (typeDef, sourceCodeGeneratorInfo) => {
+    const shouldIncapsulateState = stateShouldBeIncapsulated(typeDef);
+
     const lines = [
-        createContextHeader,
-        createStatePropsInterface,
-        createStateInterface,
-        createContextProviderPropsInterface,
-        createContextValueInterface,
-        createDefaultValues,
-        createDefaultState,
-        createDefaultContextValue,
-        createState,
-        createContext,
-        createContextProvider
+        { builder: createContextHeader },
+        { builder: createStatePropsInterface, ignore: shouldIncapsulateState },
+        { builder: createStateInterface, ignore: shouldIncapsulateState },
+        { builder: createContextProviderPropsInterface },
+        { builder: createContextValueInterface },
+        { builder: createDefaultValues },
+        { builder: createDefaultState, ignore: shouldIncapsulateState },
+        { builder: createDefaultContextValue },
+        { builder: createState, ignore: shouldIncapsulateState },
+        { builder: createContext },
+        { builder: createContextProvider }
     ]
+    .filter(({ ignore }) => !ignore)
+    .map(({ builder }) => builder)
     .map(x => x({ sourceCodeGeneratorInfo, typeDef }))
     .reduce(concatWithEmptyLineReducer, []);
 
