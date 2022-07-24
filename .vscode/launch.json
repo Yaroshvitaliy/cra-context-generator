@@ -12,7 +12,8 @@
                 "<node_internals>/**"
             ],
             "program": "${workspaceFolder}\\src\\cli.js",
-            "args": ["./examples/widget-builder-contexts.json", "./examples/widget-builder-contexts"],
+            //"args": ["./examples/widget-builder-contexts.json", "./examples/widget-builder-contexts"],
+            "args": ["./examples/injection.json", "./examples/injection"],
         }
     ]
 }
