@@ -55,7 +55,7 @@ const getReactRouterDomVersion = (options) => {
 
 const createContextBuilderHeader = ({ options, sourceCodeGeneratorInfo, typeDef }) => {
     const { name, props, contextBuilder = {} } = typeDef;
-    const { imports: contextBuilderImports = [] } = contextBuilder
+    const { imports: contextBuilderImports = [] } = contextBuilder;
 
     const reactRouterDomVersion = getReactRouterDomVersion(options);
     const reactDOMImport = reactRouterDomVersion <= 5 ? `import ReactDOM from 'react-dom';` : `import ReactDOM from 'react-dom/client';`;
