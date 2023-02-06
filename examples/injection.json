@@ -13,7 +13,7 @@
             "description": "The dashboard state properties.",
             "name": "Dashboard",
             "props": [
-                { "name": "injections", "type": "any[]", "isOptional": false, "defaultValue": [], "shouldUpdateLocation": false }
+                { "name": "injections", "type": "any[]", "isOptional": false, "defaultValue": [], "shouldUpdateLocation": false, "customUpdateLocation": false }
             ]
         },
         {
@@ -23,7 +23,7 @@
             "description": "The user state properties.",
             "name": "User",
             "props": [
-                { "name": "currentUser", "type": "any", "isOptional": true, "defaultValue": null, "shouldUpdateLocation": false }
+                { "name": "currentUser", "type": "any", "isOptional": true, "defaultValue": null, "shouldUpdateLocation": false, "customUpdateLocation": false }
             ]
         }
     ]
