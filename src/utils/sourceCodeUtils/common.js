@@ -9,6 +9,8 @@ const createStatePropName = (name) => `${toCamelCase(name)}State`;
 const createSetStatePropName = (name) => `set${toPascalCase(name)}State`;    
 const createSetEventHandlerPropName = (name) => `${toCamelCase(name)}SetEventHandler`;   
 const createUrlParamPropName = (name) => `${toCamelCase(name)}UrlParam`;   
+const createCustomLocationFromStatePropName = (name) => `customLocationFrom${toPascalCase(name)}`;   
+const createCustomStateFromLocationPropName = (name) => `custom${toPascalCase(name)}FromLocation`;   
 const createWithPropName = (name) => `with${toPascalCase(name)}`;
 const createInitialPropName = (name) => `initial${toPascalCase(name)}`;
 
@@ -65,6 +67,8 @@ module.exports = {
     createSetStatePropName,
     createSetEventHandlerPropName,
     createUrlParamPropName,
+    createCustomLocationFromStatePropName,
+    createCustomStateFromLocationPropName,
     createWithPropName,
     createInitialPropName,
     createStateInterfaceName,

@@ -41,6 +41,7 @@ export const deserializePathname = (pathname: string) => {
 };
 
 export const serializePathname = (pathname: any) =>
+    '/' +
     Object.keys(pathname)
         .map(key => ` + '`' + '${key}=${pathname[key]}' + '`' + `)
         .sort()

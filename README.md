@@ -20,3 +20,35 @@ Execute the following command to unlink `cra-generate-contexts` command:
 # Examples
 Execute the following command to generate the source code:  
 `cra-generate-contexts ./examples/widget-builder-contexts.json ./examples/widget-builder-contexts`
+
+# Versions
+
+### 1.4.0
+- added customUpdateLocation feature
+- fixed location's pathname serialization issue
+- fixed sync location with state issue
+
+### 1.3.0
+- simplified contexts for disableContextBuilder set to true
+- added forceExternalStateGeneration feature
+
+### 1.2.1
+- fixed array type issue
+
+### 1.2.0
+- added shouldUpdateLocation functionality
+- fixed issues related to isOptional functionality
+- fixed object type issue
+
+
+### 1.1.1
+- fixed react-router-dom v6 issues
+- removed CustomRouter
+- simplified context builder
+
+### 1.1.0
+- added options to json file
+- fixed isOptional issue
+
+### 1.0.0
+- implemented generation context and context builder files
