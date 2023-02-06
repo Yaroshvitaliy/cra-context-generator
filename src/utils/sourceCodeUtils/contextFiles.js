@@ -33,8 +33,10 @@ const createDefaultValueName = (name) => `Default${toPascalCase(name)}`;
 const createDefaultContextValueName = (name) => `Default${toPascalCase(name)}ContextValue`;
 const createContextName = (name) => `${toPascalCase(name)}Context`;
 
-const createContextHeader = ({ sourceCodeGeneratorInfo }) => {
-    const imports = [`import React from 'react';`];
+const createContextHeader = ({ sourceCodeGeneratorInfo, typeDef }) => {
+    const { context = {} } = typeDef;
+    const { imports: contextImports = [] } = context;
+    const imports = [`import React from 'react';`].concat(contextImports);
     const header = createHeader(sourceCodeGeneratorInfo, imports);
     return header;
 };

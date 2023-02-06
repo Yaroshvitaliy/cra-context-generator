@@ -23,6 +23,9 @@ Execute the following command to generate the source code:
 
 # Versions
 
+### 1.5.0
+- added context imports
+
 ### 1.4.0
 - added customUpdateLocation feature
 - fixed location's pathname serialization issue
